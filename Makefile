@@ -4,7 +4,8 @@ SHELL := /bin/bash
 
 all: build
 
-build: update-emoji
+build:
+	@echo "Tip: to refresh emoji names from Unicode, periodically run 'make update-emoji'." >&2
 	cd src-tauri && \
 		cargo update && \
 		cargo build
@@ -22,4 +23,4 @@ dev:
 		cargo tauri dev
 
 update-emoji:
-	ruby scripts/generate_emoji_cldr.rb
+	bash scripts/generate_emoji_cldr.sh
