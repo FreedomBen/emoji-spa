@@ -58,6 +58,8 @@ Once the system linker is used and the GUI dependencies above are installed, the
 
 ## Running the app
 
+### In Development
+
 From the repository root:
 
 ```bash
@@ -70,12 +72,16 @@ cargo tauri dev
 
 This will build the Rust code, launch the Tauri window, and load the static UI from `dist/`.
 
+### Release build
+
 To produce a release build:
 
 ```bash
 cd src-tauri
 cargo tauri build
 ```
+
+An AppImage will appear in `src-tauri/target/release/bundle/appimage/*.AppImage`
 
 ## Using the emoji picker
 
