@@ -95,6 +95,40 @@ header p {
   accent-color: #38bdf8;
 }
 
+.emoji-context-menu {
+  position: fixed;
+  min-width: 160px;
+  background: #020617;
+  border-radius: 0.5rem;
+  border: 1px solid #1f2937;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  padding: 0.25rem 0;
+  z-index: 40;
+}
+
+.emoji-context-menu-hidden {
+  display: none;
+}
+
+.emoji-context-menu button {
+  all: unset;
+  display: block;
+  width: 100%;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.9rem;
+  color: #e5e7eb;
+  cursor: pointer;
+}
+
+.emoji-context-menu button:hover {
+  background: #111827;
+}
+
+.emoji-context-menu button:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: -2px;
+}
+
 main {
   flex: 1;
   padding: 1rem 1.5rem 2rem;

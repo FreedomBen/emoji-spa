@@ -5,6 +5,7 @@ const categoriesEl = document.getElementById("categories");
 const searchInput = document.getElementById("searchInput");
 const categorySelect = document.getElementById("categorySelect");
 const groupByCategoryCheckbox = document.getElementById("groupByCategory");
+const contextMenuEl = document.getElementById("emojiContextMenu");
 
 let emojiRegex = null;
 let allCategories = null;
@@ -24,6 +25,8 @@ const FREQUENT_MIN_COUNT = 2;
 // emoji -> { count: number, lastUsed: number }
 const emojiUsage = new Map();
 let usageSaveTimeout = null;
+let contextMenuEmoji = null;
+let contextMenuCategory = null;
 
 const CATEGORY_KEYWORDS = {
   "Smileys & Emotion": ["smile", "smiley", "emoji", "happy", "sad", "angry", "cry", "laugh", "emotion", "face"],
@@ -332,6 +335,9 @@ function renderCategories(categories, groupByCategory) {
         button.textContent = emoji;
         button.title = getEmojiTitle(emoji, name);
         button.addEventListener("click", () => copyEmoji(emoji));
+        button.addEventListener("contextmenu", (event) =>
+          handleEmojiContextMenu(event, emoji, name)
+        );
         grid.appendChild(button);
       }
 
@@ -355,6 +361,9 @@ function renderCategories(categories, groupByCategory) {
         button.textContent = emoji;
         button.title = getEmojiTitle(emoji, name);
         button.addEventListener("click", () => copyEmoji(emoji));
+        button.addEventListener("contextmenu", (event) =>
+          handleEmojiContextMenu(event, emoji, name)
+        );
         grid.appendChild(button);
       }
     }
@@ -393,11 +402,57 @@ function renderSpecialSection(title, emojis) {
     button.textContent = emoji;
     button.title = getEmojiTitle(emoji, title);
     button.addEventListener("click", () => copyEmoji(emoji));
+     button.addEventListener("contextmenu", (event) =>
+       handleEmojiContextMenu(event, emoji, title)
+     );
     grid.appendChild(button);
   }
 
   section.appendChild(grid);
   categoriesEl.appendChild(section);
+}
+
+function showEmojiContextMenu(event, emoji, categoryName) {
+  if (!contextMenuEl) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  contextMenuEmoji = emoji;
+  contextMenuCategory = categoryName || null;
+
+  contextMenuEl.classList.remove("emoji-context-menu-hidden");
+
+  const menuRect = contextMenuEl.getBoundingClientRect();
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+
+  let x = event.clientX;
+  let y = event.clientY;
+
+  const width = menuRect.width || 160;
+  const height = menuRect.height || 100;
+
+  if (x + width > viewportWidth - 8) {
+    x = Math.max(8, viewportWidth - width - 8);
+  }
+  if (y + height > viewportHeight - 8) {
+    y = Math.max(8, viewportHeight - height - 8);
+  }
+
+  contextMenuEl.style.left = `${x}px`;
+  contextMenuEl.style.top = `${y}px`;
+}
+
+function hideEmojiContextMenu() {
+  if (!contextMenuEl) return;
+  contextMenuEl.classList.add("emoji-context-menu-hidden");
+  contextMenuEmoji = null;
+  contextMenuCategory = null;
+}
+
+function handleEmojiContextMenu(event, emoji, categoryName) {
+  showEmojiContextMenu(event, emoji, categoryName);
 }
 
 function setStatus(text) {
@@ -534,6 +589,42 @@ function initControls() {
       applyFiltersAndRender();
     });
   }
+
+   if (contextMenuEl) {
+     contextMenuEl.addEventListener("click", (event) => {
+       const target = event.target;
+       if (!(target instanceof HTMLElement)) return;
+       const action = target.getAttribute("data-action");
+       if (!action) return;
+
+       // Stub: real behavior (pin/hide/reset) will be implemented later.
+       console.log("Emoji context action selected:", {
+         action,
+         emoji: contextMenuEmoji,
+         category: contextMenuCategory
+       });
+
+       hideEmojiContextMenu();
+     });
+   }
+
+   document.addEventListener("click", (event) => {
+     if (!contextMenuEl) return;
+     if (contextMenuEl.contains(event.target)) return;
+     hideEmojiContextMenu();
+   });
+
+   window.addEventListener("resize", () => {
+     hideEmojiContextMenu();
+   });
+
+   window.addEventListener(
+     "scroll",
+     () => {
+       hideEmojiContextMenu();
+     },
+     true
+   );
 }
 
 function init() {
