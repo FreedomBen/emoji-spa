@@ -1,10 +1,10 @@
-FROM rust:1.80-bullseye
+FROM rust:latest
 
 # Install system dependencies required to build Tauri apps on Debian/Ubuntu.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       libgtk-3-dev \
-      libwebkit2gtk-4.0-dev \
+      libwebkit2gtk-4.1-dev \
       libayatana-appindicator3-dev \
       librsvg2-dev \
       pkg-config \
@@ -24,7 +24,7 @@ RUN cargo install tauri-cli
 
 WORKDIR /app/src-tauri
 
-# Build a release bundle for all supported formats.
+# Build a release bundle for all supported formats (AppImage and others).
 RUN cargo tauri build --bundles all
 
 # Collect build artifacts in a single directory for export.
