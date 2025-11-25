@@ -37,6 +37,13 @@
             <input id="groupByCategory" type="checkbox" checked />
             <span>Group by category</span>
           </label>
+          <button
+            id="settingsButton"
+            type="button"
+            class="settings-button"
+          >
+            Settings
+          </button>
         </div>
       </header>
       <main id="categories"></main>
@@ -44,6 +51,96 @@
         <button type="button" data-action="toggle-pin">Pin</button>
         <button type="button" data-action="toggle-hide">Hide</button>
         <button type="button" data-action="reset-usage">Reset usage count</button>
+      </div>
+      <div
+        id="settingsOverlay"
+        class="settings-overlay settings-hidden"
+        aria-hidden="true"
+      >
+        <div
+          class="settings-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="settingsTitle"
+        >
+          <header class="settings-panel-header">
+            <h2 id="settingsTitle">Settings</h2>
+            <button
+              id="closeSettingsButton"
+              type="button"
+              class="settings-icon-button"
+              aria-label="Close settings"
+            >
+              ×
+            </button>
+          </header>
+
+          <section class="settings-section">
+            <h3>Usage history</h3>
+            <p>
+              Reset emoji usage counts used to power the Frequently Used and Recently Used sections.
+            </p>
+            <button
+              id="resetAllUsageButton"
+              type="button"
+              class="settings-danger-button"
+            >
+              Reset all usage
+            </button>
+          </section>
+
+          <section class="settings-section">
+            <h3>Emoji usage table</h3>
+            <p>
+              Per-emoji usage counts based on how many times you have copied each emoji.
+            </p>
+            <div class="settings-usage-table-wrapper">
+              <table class="settings-usage-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Emoji</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Count</th>
+                  </tr>
+                </thead>
+                <tbody id="emojiUsageTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <h3>Theme</h3>
+            <p>Choose light, dark, or follow your system theme.</p>
+            <div class="settings-theme-options">
+              <label>
+                <input
+                  type="radio"
+                  name="themePreference"
+                  value="system"
+                  checked
+                />
+                System
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="themePreference"
+                  value="light"
+                />
+                Light
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="themePreference"
+                  value="dark"
+                />
+                Dark
+              </label>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
     <script type="module" src="app.js"></script>

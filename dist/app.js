@@ -6,6 +6,11 @@ const searchInput = document.getElementById("searchInput");
 const categorySelect = document.getElementById("categorySelect");
 const groupByCategoryCheckbox = document.getElementById("groupByCategory");
 const contextMenuEl = document.getElementById("emojiContextMenu");
+const settingsButton = document.getElementById("settingsButton");
+const settingsOverlay = document.getElementById("settingsOverlay");
+const closeSettingsButton = document.getElementById("closeSettingsButton");
+const resetAllUsageButton = document.getElementById("resetAllUsageButton");
+const emojiUsageTableBody = document.getElementById("emojiUsageTableBody");
 
 let emojiRegex = null;
 let allCategories = null;
@@ -18,6 +23,11 @@ for (const entry of EMOJI_METADATA) {
 }
 
 const USAGE_STORAGE_KEY = "emojiUsage.v1";
+const THEME_STORAGE_KEY = "emojiThemePreference.v1";
+const THEME_SYSTEM = "system";
+const THEME_LIGHT = "light";
+const THEME_DARK = "dark";
+
 const RECENT_LIMIT = 50;
 const FREQUENT_LIMIT = 50;
 const FREQUENT_MIN_COUNT = 2;
@@ -29,6 +39,8 @@ const pinnedEmojis = new Set();
 // Set<string> of hidden emoji.
 const hiddenEmojis = new Set();
 let usageSaveTimeout = null;
+let themePreference = THEME_SYSTEM;
+let systemDarkQuery = null;
 let contextMenuEmoji = null;
 let contextMenuCategory = null;
 
@@ -189,6 +201,101 @@ function schedulePersistUsage() {
     usageSaveTimeout = null;
     persistUsage();
   }, 1000);
+}
+
+function loadThemePreference() {
+  try {
+    const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (raw === THEME_LIGHT || raw === THEME_DARK || raw === THEME_SYSTEM) {
+      return raw;
+    }
+  } catch (error) {
+    console.error("Failed to load theme preference from storage:", error);
+  }
+  return THEME_SYSTEM;
+}
+
+function persistThemePreference(value) {
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, value);
+  } catch (error) {
+    console.error("Failed to persist theme preference:", error);
+  }
+}
+
+function getSystemPrefersDark() {
+  if (!window.matchMedia) return false;
+  try {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  } catch {
+    return false;
+  }
+}
+
+function setEffectiveTheme(effectiveTheme) {
+  const body = document.body;
+  if (!body) return;
+  const theme = effectiveTheme === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
+  body.setAttribute("data-theme", theme);
+}
+
+function handleSystemThemeChange() {
+  if (themePreference !== THEME_SYSTEM) return;
+  const effective = getSystemPrefersDark() ? THEME_DARK : THEME_LIGHT;
+  setEffectiveTheme(effective);
+}
+
+function updateSystemThemeListener() {
+  if (!window.matchMedia) return;
+
+  if (systemDarkQuery) {
+    try {
+      systemDarkQuery.removeEventListener("change", handleSystemThemeChange);
+    } catch {
+      // ignore
+    }
+    systemDarkQuery = null;
+  }
+
+  if (themePreference !== THEME_SYSTEM) {
+    return;
+  }
+
+  try {
+    systemDarkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    systemDarkQuery.addEventListener("change", handleSystemThemeChange);
+  } catch {
+    systemDarkQuery = null;
+  }
+}
+
+function applyTheme(preference, persist = true) {
+  if (preference !== THEME_LIGHT && preference !== THEME_DARK && preference !== THEME_SYSTEM) {
+    preference = THEME_SYSTEM;
+  }
+
+  themePreference = preference;
+  if (persist) {
+    persistThemePreference(preference);
+  }
+
+  let effective = preference;
+  if (preference === THEME_SYSTEM) {
+    effective = getSystemPrefersDark() ? THEME_DARK : THEME_LIGHT;
+  }
+
+  setEffectiveTheme(effective);
+  updateSystemThemeListener();
+}
+
+function syncThemeControlsFromPreference() {
+  const radios = document.querySelectorAll('input[name="themePreference"]');
+  if (!radios || !radios.length) return;
+
+  for (const node of radios) {
+    if (!(node instanceof HTMLInputElement)) continue;
+    node.checked = node.value === themePreference;
+  }
 }
 
 function recordUsage(emoji) {
@@ -776,6 +883,139 @@ function filterCategories() {
   return result;
 }
 
+function getEmojiCategoryName(emoji) {
+  if (!emoji) return "";
+  const cp = emoji.codePointAt(0);
+  return cp != null ? getCategory(cp) : "Other Emoji";
+}
+
+function getEmojiUsageRows() {
+  const rows = [];
+  const seen = new Set();
+
+  if (allCategories) {
+    for (const [categoryName, emojis] of allCategories.entries()) {
+      for (const emoji of emojis) {
+        if (!emoji || seen.has(emoji)) continue;
+        seen.add(emoji);
+        const stats = emojiUsage.get(emoji);
+        const count =
+          stats && typeof stats.count === "number" && Number.isFinite(stats.count)
+            ? stats.count
+            : 0;
+        const lastUsed =
+          stats && typeof stats.lastUsed === "number" && Number.isFinite(stats.lastUsed)
+            ? stats.lastUsed
+            : 0;
+        const meta = metadataByEmoji.get(emoji);
+        const name = meta && meta.name ? meta.name : "";
+        rows.push({
+          emoji,
+          name,
+          category: categoryName || getEmojiCategoryName(emoji),
+          count,
+          lastUsed
+        });
+      }
+    }
+  }
+
+  for (const [emoji, stats] of emojiUsage.entries()) {
+    if (seen.has(emoji)) continue;
+    const count =
+      stats && typeof stats.count === "number" && Number.isFinite(stats.count)
+        ? stats.count
+        : 0;
+    const lastUsed =
+      stats && typeof stats.lastUsed === "number" && Number.isFinite(stats.lastUsed)
+        ? stats.lastUsed
+        : 0;
+    const meta = metadataByEmoji.get(emoji);
+    const name = meta && meta.name ? meta.name : "";
+    rows.push({
+      emoji,
+      name,
+      category: getEmojiCategoryName(emoji),
+      count,
+      lastUsed
+    });
+    seen.add(emoji);
+  }
+
+  rows.sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    if (b.lastUsed !== a.lastUsed) return (b.lastUsed || 0) - (a.lastUsed || 0);
+    return a.emoji.localeCompare(b.emoji);
+  });
+
+  return rows;
+}
+
+function renderEmojiUsageTable() {
+  if (!emojiUsageTableBody) return;
+
+  const rows = getEmojiUsageRows();
+  emojiUsageTableBody.textContent = "";
+
+  if (!rows.length) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 4;
+    td.textContent = "No emoji usage recorded yet.";
+    tr.appendChild(td);
+    emojiUsageTableBody.appendChild(tr);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+
+    const emojiCell = document.createElement("td");
+    emojiCell.textContent = row.emoji;
+    tr.appendChild(emojiCell);
+
+    const nameCell = document.createElement("td");
+    nameCell.textContent = row.name || "";
+    tr.appendChild(nameCell);
+
+    const categoryCell = document.createElement("td");
+    categoryCell.textContent = row.category || "";
+    tr.appendChild(categoryCell);
+
+    const countCell = document.createElement("td");
+    countCell.textContent = String(row.count || 0);
+    tr.appendChild(countCell);
+
+    fragment.appendChild(tr);
+  }
+
+  emojiUsageTableBody.appendChild(fragment);
+}
+
+function resetAllUsageCounts() {
+  if (!emojiUsage.size) return;
+  emojiUsage.clear();
+  schedulePersistUsage();
+  applyFiltersAndRender();
+  renderEmojiUsageTable();
+  setStatus("All emoji usage counts have been reset.");
+}
+
+function openSettingsPanel() {
+  if (!settingsOverlay) return;
+  settingsOverlay.classList.remove("settings-hidden");
+  settingsOverlay.setAttribute("aria-hidden", "false");
+  renderEmojiUsageTable();
+  syncThemeControlsFromPreference();
+}
+
+function closeSettingsPanel() {
+  if (!settingsOverlay) return;
+  settingsOverlay.classList.add("settings-hidden");
+  settingsOverlay.setAttribute("aria-hidden", "true");
+}
+
 function populateCategorySelect(categories) {
   if (!categorySelect) return;
 
@@ -966,62 +1206,119 @@ function initControls() {
     });
   }
 
-   if (contextMenuEl) {
-     contextMenuEl.addEventListener("click", (event) => {
-       const target = event.target;
-       if (!(target instanceof HTMLElement)) return;
-       const action = target.getAttribute("data-action");
-       if (!action) return;
+  if (contextMenuEl) {
+    contextMenuEl.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const action = target.getAttribute("data-action");
+      if (!action) return;
 
-       if (!contextMenuEmoji) {
-         hideEmojiContextMenu();
-         return;
-       }
+      if (!contextMenuEmoji) {
+        hideEmojiContextMenu();
+        return;
+      }
 
-       if (action === "toggle-pin") {
-         if (pinnedEmojis.has(contextMenuEmoji)) {
-           unpinEmoji(contextMenuEmoji);
-         } else {
-           pinEmoji(contextMenuEmoji);
-         }
-         applyFiltersAndRender();
-       } else if (action === "toggle-hide") {
-         if (hiddenEmojis.has(contextMenuEmoji)) {
-           unhideEmoji(contextMenuEmoji);
-         } else {
-           hideEmoji(contextMenuEmoji);
-         }
-         applyFiltersAndRender();
-       } else if (action === "reset-usage") {
-         resetUsage(contextMenuEmoji);
-         applyFiltersAndRender();
-       }
+      if (action === "toggle-pin") {
+        if (pinnedEmojis.has(contextMenuEmoji)) {
+          unpinEmoji(contextMenuEmoji);
+        } else {
+          pinEmoji(contextMenuEmoji);
+        }
+        applyFiltersAndRender();
+      } else if (action === "toggle-hide") {
+        if (hiddenEmojis.has(contextMenuEmoji)) {
+          unhideEmoji(contextMenuEmoji);
+        } else {
+          hideEmoji(contextMenuEmoji);
+        }
+        applyFiltersAndRender();
+      } else if (action === "reset-usage") {
+        resetUsage(contextMenuEmoji);
+        applyFiltersAndRender();
+      }
 
-       hideEmojiContextMenu();
-     });
-   }
+      hideEmojiContextMenu();
+    });
+  }
 
-   document.addEventListener("click", (event) => {
-     if (!contextMenuEl) return;
-     if (contextMenuEl.contains(event.target)) return;
-     hideEmojiContextMenu();
-   });
+  document.addEventListener("click", (event) => {
+    if (!contextMenuEl) return;
+    if (contextMenuEl.contains(event.target)) return;
+    hideEmojiContextMenu();
+  });
 
-   window.addEventListener("resize", () => {
-     hideEmojiContextMenu();
-   });
+  window.addEventListener("resize", () => {
+    hideEmojiContextMenu();
+  });
 
-   window.addEventListener(
-     "scroll",
-     () => {
-       hideEmojiContextMenu();
-     },
-     true
-   );
+  window.addEventListener(
+    "scroll",
+    () => {
+      hideEmojiContextMenu();
+    },
+    true
+  );
+
+  if (settingsButton) {
+    settingsButton.addEventListener("click", () => {
+      openSettingsPanel();
+    });
+  }
+
+  if (closeSettingsButton) {
+    closeSettingsButton.addEventListener("click", () => {
+      closeSettingsPanel();
+    });
+  }
+
+  if (settingsOverlay) {
+    settingsOverlay.addEventListener("click", (event) => {
+      if (event.target === settingsOverlay) {
+        closeSettingsPanel();
+      }
+    });
+  }
+
+  if (resetAllUsageButton) {
+    resetAllUsageButton.addEventListener("click", () => {
+      if (!emojiUsage.size) return;
+      const confirmed = window.confirm(
+        "Reset emoji usage counts for all emoji? This cannot be undone."
+      );
+      if (!confirmed) return;
+      resetAllUsageCounts();
+    });
+  }
+
+  const themeRadios = document.querySelectorAll('input[name="themePreference"]');
+  if (themeRadios && themeRadios.length) {
+    for (const node of themeRadios) {
+      if (!(node instanceof HTMLInputElement)) continue;
+      node.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement) || !target.checked) return;
+        const value = target.value;
+        applyTheme(value);
+      });
+    }
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      if (settingsOverlay && !settingsOverlay.classList.contains("settings-hidden")) {
+        event.preventDefault();
+        closeSettingsPanel();
+      } else {
+        hideEmojiContextMenu();
+      }
+    }
+  });
 }
 
 function init() {
   initEmojiRegex();
+  themePreference = loadThemePreference();
+  applyTheme(themePreference, false);
   initControls();
   setStatus("Generating emoji list...");
 
