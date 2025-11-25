@@ -221,6 +221,13 @@ function unhideEmoji(emoji) {
   }
 }
 
+function resetUsage(emoji) {
+  if (!emoji) return;
+  if (emojiUsage.delete(emoji)) {
+    schedulePersistUsage();
+  }
+}
+
 function getPinnedEmojisForCandidates(candidateSet) {
   if (!pinnedEmojis.size || !candidateSet || !candidateSet.size) return [];
   const result = [];
@@ -961,8 +968,8 @@ function initControls() {
          }
          applyFiltersAndRender();
        } else if (action === "reset-usage") {
-         // To be implemented in a future step.
-         console.log("Reset usage (not yet implemented):", contextMenuEmoji);
+         resetUsage(contextMenuEmoji);
+         applyFiltersAndRender();
        }
 
        hideEmojiContextMenu();
