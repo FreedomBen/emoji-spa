@@ -95,6 +95,22 @@ header p {
   accent-color: #38bdf8;
 }
 
+.emoji-hidden-section summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: #9ca3af;
+}
+
+.emoji-hidden-section summary::marker {
+  content: "";
+}
+
+.emoji-hidden-section[open] summary {
+  color: #e5e7eb;
+}
+
 .emoji-context-menu {
   position: fixed;
   min-width: 160px;

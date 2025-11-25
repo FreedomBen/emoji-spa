@@ -26,6 +26,8 @@ const FREQUENT_MIN_COUNT = 2;
 const emojiUsage = new Map();
 // Set<string> of pinned emoji (iteration order is pin order).
 const pinnedEmojis = new Set();
+// Set<string> of hidden emoji.
+const hiddenEmojis = new Set();
 let usageSaveTimeout = null;
 let contextMenuEmoji = null;
 let contextMenuCategory = null;
@@ -47,6 +49,8 @@ const CATEGORY_KEYWORDS = {
   "Regional Indicators": ["flag", "country", "region"],
   "Other Emoji": ["emoji", "symbol"]
 };
+
+let lastHiddenMatches = 0;
 
 async function loadCldrEmojiNames() {
   try {
@@ -119,6 +123,13 @@ function loadUsageFromStorage() {
         pinnedEmojis.add(emoji);
       }
     }
+
+    const hidden = Array.isArray(parsed.hidden) ? parsed.hidden : [];
+    for (const emoji of hidden) {
+      if (typeof emoji === "string" && emoji) {
+        hiddenEmojis.add(emoji);
+      }
+    }
   } catch (error) {
     console.error("Failed to load emoji usage from storage:", error);
   }
@@ -138,7 +149,8 @@ function persistUsage() {
     const payload = {
       version: 1,
       items,
-      pinned: Array.from(pinnedEmojis)
+      pinned: Array.from(pinnedEmojis),
+      hidden: Array.from(hiddenEmojis)
     };
 
     window.localStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(payload));
@@ -179,6 +191,19 @@ function pinEmoji(emoji) {
 function unpinEmoji(emoji) {
   if (!emoji) return;
   if (pinnedEmojis.delete(emoji)) {
+    schedulePersistUsage();
+  }
+}
+
+function hideEmoji(emoji) {
+  if (!emoji) return;
+  hiddenEmojis.add(emoji);
+  schedulePersistUsage();
+}
+
+function unhideEmoji(emoji) {
+  if (!emoji) return;
+  if (hiddenEmojis.delete(emoji)) {
     schedulePersistUsage();
   }
 }
@@ -237,6 +262,66 @@ function getRecentEmojis(excludeSet) {
 
   items.sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
   return items.slice(0, RECENT_LIMIT).map((item) => item.emoji);
+}
+
+function countHiddenMatchesForCurrentFilters() {
+  if (!allCategories || !hiddenEmojis.size) return 0;
+
+  const query = searchState.query.trim().toLowerCase();
+  const tokens = query ? query.split(/\s+/).filter(Boolean) : [];
+  const selectedCategory = searchState.category;
+
+  let count = 0;
+
+  for (const emoji of hiddenEmojis) {
+    if (!emoji) continue;
+
+    const cp = emoji.codePointAt(0);
+    const categoryName = cp != null ? getCategory(cp) : "Other Emoji";
+
+    if (selectedCategory !== "all" && categoryName !== selectedCategory) {
+      continue;
+    }
+
+    if (!tokens.length) {
+      count++;
+      continue;
+    }
+
+    const haystacks = [];
+
+    const categoryNameLower = categoryName.toLowerCase();
+    haystacks.push(categoryNameLower);
+
+    const categoryKeywords = CATEGORY_KEYWORDS[categoryName] || [];
+    for (const kw of categoryKeywords) {
+      haystacks.push(kw.toLowerCase());
+    }
+
+    haystacks.push(emoji);
+
+    const meta = metadataByEmoji.get(emoji);
+    if (meta) {
+      if (meta.name) {
+        haystacks.push(String(meta.name).toLowerCase());
+      }
+      if (Array.isArray(meta.keywords)) {
+        for (const kw of meta.keywords) {
+          haystacks.push(String(kw).toLowerCase());
+        }
+      }
+    }
+
+    const matches = tokens.every((token) =>
+      haystacks.some((text) => text.includes(token))
+    );
+
+    if (matches) {
+      count++;
+    }
+  }
+
+  return count;
 }
 
 function initEmojiRegex() {
@@ -347,7 +432,12 @@ async function copyEmoji(emoji) {
 function renderCategories(categories, groupByCategory) {
   if (!categories || categories.size === 0) {
     const empty = document.createElement("p");
-    empty.textContent = "No emoji match your current filters.";
+    let message = "No emoji match your current filters.";
+    if (lastHiddenMatches > 0) {
+      message +=
+        " Some hidden emoji do match and can be found in the Hidden section below.";
+    }
+    empty.textContent = message;
     categoriesEl.appendChild(empty);
     return;
   }
@@ -446,6 +536,37 @@ function renderSpecialSection(title, emojis) {
   categoriesEl.appendChild(section);
 }
 
+function renderHiddenSection() {
+  if (!hiddenEmojis.size) return;
+
+  const section = document.createElement("section");
+  const details = document.createElement("details");
+  details.className = "emoji-hidden-section";
+
+  const summary = document.createElement("summary");
+  summary.textContent = `Hidden (${hiddenEmojis.size})`;
+  details.appendChild(summary);
+
+  const grid = document.createElement("div");
+  grid.className = "emoji-grid";
+
+  for (const emoji of hiddenEmojis) {
+    const button = document.createElement("button");
+    button.className = "emoji-button";
+    button.textContent = emoji;
+    button.title = getEmojiTitle(emoji, "Hidden");
+    button.addEventListener("click", () => copyEmoji(emoji));
+    button.addEventListener("contextmenu", (event) =>
+      handleEmojiContextMenu(event, emoji, "Hidden")
+    );
+    grid.appendChild(button);
+  }
+
+  details.appendChild(grid);
+  section.appendChild(details);
+  categoriesEl.appendChild(section);
+}
+
 function showEmojiContextMenu(event, emoji, categoryName) {
   if (!contextMenuEl) return;
 
@@ -458,6 +579,11 @@ function showEmojiContextMenu(event, emoji, categoryName) {
   const pinButton = contextMenuEl.querySelector('[data-action="toggle-pin"]');
   if (pinButton && pinButton instanceof HTMLElement) {
     pinButton.textContent = pinnedEmojis.has(emoji) ? "Unpin" : "Pin";
+  }
+
+  const hideButton = contextMenuEl.querySelector('[data-action="toggle-hide"]');
+  if (hideButton && hideButton instanceof HTMLElement) {
+    hideButton.textContent = hiddenEmojis.has(emoji) ? "Unhide" : "Hide";
   }
 
   contextMenuEl.classList.remove("emoji-context-menu-hidden");
@@ -517,6 +643,9 @@ function filterCategories() {
     }
 
     const filtered = emojis.filter((emoji) => {
+      // Always hide emojis that the user has explicitly hidden.
+      if (hiddenEmojis.has(emoji)) return false;
+
       // No search text: keep everything within the selected category.
       if (!tokens.length) return true;
 
@@ -578,6 +707,8 @@ function applyFiltersAndRender() {
   const filtered = filterCategories();
   categoriesEl.innerHTML = "";
 
+  lastHiddenMatches = countHiddenMatchesForCurrentFilters();
+
   // Build the set of emojis that are part of the current filtered result.
   const candidateSet = new Set();
   for (const emojis of filtered.values()) {
@@ -612,6 +743,10 @@ function applyFiltersAndRender() {
   }
 
   renderCategories(filtered, searchState.groupByCategory);
+  const hasQuery = searchState.query.trim().length > 0;
+  if (!hasQuery || lastHiddenMatches > 0) {
+    renderHiddenSection();
+  }
 }
 
 function initControls() {
@@ -655,9 +790,13 @@ function initControls() {
            pinEmoji(contextMenuEmoji);
          }
          applyFiltersAndRender();
-       } else if (action === "hide") {
-         // To be implemented in a future step.
-         console.log("Hide emoji (not yet implemented):", contextMenuEmoji);
+       } else if (action === "toggle-hide") {
+         if (hiddenEmojis.has(contextMenuEmoji)) {
+           unhideEmoji(contextMenuEmoji);
+         } else {
+           hideEmoji(contextMenuEmoji);
+         }
+         applyFiltersAndRender();
        } else if (action === "reset-usage") {
          // To be implemented in a future step.
          console.log("Reset usage (not yet implemented):", contextMenuEmoji);
