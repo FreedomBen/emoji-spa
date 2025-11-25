@@ -605,6 +605,69 @@ async function copyEmoji(emoji) {
   }
 }
 
+function attachEmojiEventHandlers(button, emoji, categoryName) {
+  const LONG_PRESS_MS = 500;
+  let longPressTimeoutId = null;
+  let longPressTriggered = false;
+  let lastPointerEvent = null;
+
+  function clearLongPressTimer() {
+    if (longPressTimeoutId != null) {
+      window.clearTimeout(longPressTimeoutId);
+      longPressTimeoutId = null;
+    }
+  }
+
+  button.addEventListener("click", (event) => {
+    if (longPressTriggered) {
+      event.preventDefault();
+      event.stopPropagation();
+      longPressTriggered = false;
+      return;
+    }
+    copyEmoji(emoji);
+  });
+
+  button.addEventListener("contextmenu", (event) =>
+    handleEmojiContextMenu(event, emoji, categoryName)
+  );
+
+  button.addEventListener("pointerdown", (event) => {
+    if (event.pointerType && event.pointerType !== "touch") {
+      return;
+    }
+    lastPointerEvent = event;
+    longPressTriggered = false;
+    clearLongPressTimer();
+    longPressTimeoutId = window.setTimeout(() => {
+      longPressTimeoutId = null;
+      longPressTriggered = true;
+      showEmojiContextMenu(lastPointerEvent, emoji, categoryName);
+    }, LONG_PRESS_MS);
+  });
+
+  button.addEventListener("pointerup", (event) => {
+    if (event.pointerType && event.pointerType !== "touch") {
+      return;
+    }
+    clearLongPressTimer();
+  });
+
+  button.addEventListener("pointercancel", (event) => {
+    if (event.pointerType && event.pointerType !== "touch") {
+      return;
+    }
+    clearLongPressTimer();
+  });
+
+  button.addEventListener("pointerleave", (event) => {
+    if (event.pointerType && event.pointerType !== "touch") {
+      return;
+    }
+    clearLongPressTimer();
+  });
+}
+
 function renderCategories(categories, groupByCategory) {
   if (!categories || categories.size === 0) {
     const empty = document.createElement("p");
@@ -634,10 +697,7 @@ function renderCategories(categories, groupByCategory) {
         button.className = "emoji-button";
         button.textContent = emoji;
         button.title = getEmojiTitle(emoji, name);
-        button.addEventListener("click", () => copyEmoji(emoji));
-        button.addEventListener("contextmenu", (event) =>
-          handleEmojiContextMenu(event, emoji, name)
-        );
+        attachEmojiEventHandlers(button, emoji, name);
         grid.appendChild(button);
       }
 
@@ -660,10 +720,7 @@ function renderCategories(categories, groupByCategory) {
         button.className = "emoji-button";
         button.textContent = emoji;
         button.title = getEmojiTitle(emoji, name);
-        button.addEventListener("click", () => copyEmoji(emoji));
-        button.addEventListener("contextmenu", (event) =>
-          handleEmojiContextMenu(event, emoji, name)
-        );
+        attachEmojiEventHandlers(button, emoji, name);
         grid.appendChild(button);
       }
     }
@@ -717,10 +774,7 @@ function renderSpecialSection(title, emojis) {
     button.className = "emoji-button";
     button.textContent = emoji;
     button.title = getEmojiTitle(emoji, title);
-    button.addEventListener("click", () => copyEmoji(emoji));
-     button.addEventListener("contextmenu", (event) =>
-       handleEmojiContextMenu(event, emoji, title)
-     );
+    attachEmojiEventHandlers(button, emoji, title);
     grid.appendChild(button);
   }
 
@@ -750,10 +804,7 @@ function renderHiddenSection(hiddenList) {
     button.className = "emoji-button";
     button.textContent = emoji;
     button.title = getEmojiTitle(emoji, "Hidden");
-    button.addEventListener("click", () => copyEmoji(emoji));
-    button.addEventListener("contextmenu", (event) =>
-      handleEmojiContextMenu(event, emoji, "Hidden")
-    );
+    attachEmojiEventHandlers(button, emoji, "Hidden");
     grid.appendChild(button);
   }
 
