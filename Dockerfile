@@ -24,8 +24,8 @@ RUN cargo install tauri-cli
 
 WORKDIR /app/src-tauri
 
-# Build a release bundle for all supported formats (AppImage and others).
-RUN cargo tauri build --bundles all
+# Build release bundles for all supported Linux formats (deb, rpm, appimage).
+RUN cargo tauri build --bundles deb rpm appimage
 
 # Collect build artifacts in a single directory for export.
 RUN mkdir -p /artifacts && \
