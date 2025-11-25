@@ -26,9 +26,26 @@ header {
   z-index: 10;
 }
 
-header h1 {
+.app-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   margin: 0 0 0.25rem;
   font-size: 1.5rem;
+}
+
+.app-logo {
+  display: block;
+  height: 2rem;
+  width: auto;
+}
+
+.app-logo-light {
+  display: none;
+}
+
+.app-title-text {
+  display: inline-block;
 }
 
 header p {
@@ -195,6 +212,16 @@ section h2 {
 .emoji-button:active {
   transform: translateY(0);
   background: #0f172a;
+}
+
+@media (prefers-color-scheme: light) {
+  .app-logo-dark {
+    display: none;
+  }
+
+  .app-logo-light {
+    display: block;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
