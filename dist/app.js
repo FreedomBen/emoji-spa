@@ -34,6 +34,44 @@ const CATEGORY_KEYWORDS = {
   "Other Emoji": ["emoji", "symbol"]
 };
 
+async function loadCldrEmojiNames() {
+  try {
+    const response = await fetch("./emoji-cldr.json");
+    if (!response.ok) {
+      return;
+    }
+
+    const data = await response.json();
+
+    if (Array.isArray(data)) {
+      for (const entry of data) {
+        if (!entry || !entry.emoji) continue;
+        const emoji = entry.emoji;
+        const existing = metadataByEmoji.get(emoji) || {};
+        const name = entry.name || existing.name;
+        const keywords = [
+          ...(existing.keywords || []),
+          ...(Array.isArray(entry.keywords) ? entry.keywords : [])
+        ];
+        metadataByEmoji.set(emoji, { emoji, name, keywords });
+      }
+    } else if (data && typeof data === "object") {
+      for (const [emoji, value] of Object.entries(data)) {
+        if (!emoji || !value) continue;
+        const existing = metadataByEmoji.get(emoji) || {};
+        const name = value.name || existing.name;
+        const keywords = [
+          ...(existing.keywords || []),
+          ...(Array.isArray(value.keywords) ? value.keywords : [])
+        ];
+        metadataByEmoji.set(emoji, { emoji, name, keywords });
+      }
+    }
+  } catch (error) {
+    console.error("Failed to load CLDR emoji names:", error);
+  }
+}
+
 const searchState = {
   query: "",
   category: "all",
@@ -159,7 +197,7 @@ function renderCategories(categories, groupByCategory) {
         const button = document.createElement("button");
         button.className = "emoji-button";
         button.textContent = emoji;
-        button.title = emoji;
+        button.title = getEmojiTitle(emoji, name);
         button.addEventListener("click", () => copyEmoji(emoji));
         grid.appendChild(button);
       }
@@ -182,7 +220,7 @@ function renderCategories(categories, groupByCategory) {
         const button = document.createElement("button");
         button.className = "emoji-button";
         button.textContent = emoji;
-        button.title = `${emoji} — ${name}`;
+        button.title = getEmojiTitle(emoji, name);
         button.addEventListener("click", () => copyEmoji(emoji));
         grid.appendChild(button);
       }
@@ -191,6 +229,17 @@ function renderCategories(categories, groupByCategory) {
     section.appendChild(grid);
     categoriesEl.appendChild(section);
   }
+}
+
+function getEmojiTitle(emoji, categoryName) {
+  const meta = metadataByEmoji.get(emoji);
+  if (meta && meta.name) {
+    return `${emoji} — ${meta.name}`;
+  }
+  if (categoryName) {
+    return `${emoji} — ${categoryName}`;
+  }
+  return emoji;
 }
 
 function setStatus(text) {
@@ -307,7 +356,8 @@ function init() {
   setStatus("Generating emoji list...");
 
   // Yield to the UI thread before heavy work.
-  setTimeout(() => {
+  setTimeout(async () => {
+    await loadCldrEmojiNames();
     allCategories = generateEmojiByCategory();
     populateCategorySelect(allCategories);
     applyFiltersAndRender();

@@ -1,10 +1,10 @@
 SHELL := /bin/bash
 
-.PHONY: all build run install-tauri dev
+.PHONY: all build run install-tauri dev update-emoji
 
 all: build
 
-build:
+build: update-emoji
 	cd src-tauri && \
 		cargo update && \
 		cargo build
@@ -20,3 +20,6 @@ install-tauri:
 dev:
 	cd src-tauri && \
 		cargo tauri dev
+
+update-emoji:
+	ruby scripts/generate_emoji_cldr.rb
