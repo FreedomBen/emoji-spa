@@ -37,7 +37,8 @@ sudo dnf install \
   librsvg2-devel \
   libappindicator-gtk3-devel \
   javascriptcoregtk4.1-devel \
-  libsoup3-devel
+  libsoup3-devel \
+  webkit2gtk4.1-devel
 ```
 
 The build log in `src-tauri/out.log` shows failures like:
