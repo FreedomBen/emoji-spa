@@ -16,6 +16,15 @@ for (const entry of EMOJI_METADATA) {
   }
 }
 
+const USAGE_STORAGE_KEY = "emojiUsage.v1";
+const RECENT_LIMIT = 24;
+const FREQUENT_LIMIT = 24;
+const FREQUENT_MIN_COUNT = 2;
+
+// emoji -> { count: number, lastUsed: number }
+const emojiUsage = new Map();
+let usageSaveTimeout = null;
+
 const CATEGORY_KEYWORDS = {
   "Smileys & Emotion": ["smile", "smiley", "emoji", "happy", "sad", "angry", "cry", "laugh", "emotion", "face"],
   "People & Body": ["person", "people", "body", "gesture", "hand", "human"],
@@ -72,11 +81,126 @@ async function loadCldrEmojiNames() {
   }
 }
 
-const searchState = {
-  query: "",
-  category: "all",
-  groupByCategory: true
-};
+function loadUsageFromStorage() {
+  try {
+    const raw = window.localStorage.getItem(USAGE_STORAGE_KEY);
+    if (!raw) return;
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return;
+
+    const items = parsed.items && typeof parsed.items === "object" ? parsed.items : parsed;
+
+    for (const [emoji, value] of Object.entries(items)) {
+      if (!emoji) continue;
+
+      const count =
+        typeof value === "number"
+          ? value
+          : Number(value && typeof value.count !== "undefined" ? value.count : NaN);
+
+      if (!Number.isFinite(count) || count <= 0) continue;
+
+      const lastUsedRaw = value && value.lastUsed;
+      const lastUsed =
+        typeof lastUsedRaw === "number" && Number.isFinite(lastUsedRaw) ? lastUsedRaw : 0;
+
+      emojiUsage.set(emoji, { count, lastUsed });
+    }
+  } catch (error) {
+    console.error("Failed to load emoji usage from storage:", error);
+  }
+}
+
+function persistUsage() {
+  try {
+    const items = {};
+    for (const [emoji, stats] of emojiUsage.entries()) {
+      if (!stats || typeof stats.count !== "number" || stats.count <= 0) continue;
+      items[emoji] = {
+        count: stats.count,
+        lastUsed: typeof stats.lastUsed === "number" ? stats.lastUsed : 0
+      };
+    }
+
+    const payload = {
+      version: 1,
+      items
+    };
+
+    window.localStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.error("Failed to persist emoji usage:", error);
+  }
+}
+
+function schedulePersistUsage() {
+  if (usageSaveTimeout != null) {
+    return;
+  }
+
+  usageSaveTimeout = window.setTimeout(() => {
+    usageSaveTimeout = null;
+    persistUsage();
+  }, 1000);
+}
+
+function recordUsage(emoji) {
+  if (!emoji) return;
+
+  const now = Date.now();
+  const current = emojiUsage.get(emoji) || { count: 0, lastUsed: 0 };
+  const next = {
+    count: current.count + 1,
+    lastUsed: now
+  };
+  emojiUsage.set(emoji, next);
+}
+
+function getFrequentEmojis() {
+  if (!emojiUsage.size) return [];
+
+  const items = [];
+  for (const [emoji, stats] of emojiUsage.entries()) {
+    if (!stats || typeof stats.count !== "number" || stats.count <= 0) continue;
+    items.push({
+      emoji,
+      count: stats.count,
+      lastUsed: typeof stats.lastUsed === "number" ? stats.lastUsed : 0
+    });
+  }
+
+  if (!items.length) return [];
+
+  items.sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    return (b.lastUsed || 0) - (a.lastUsed || 0);
+  });
+
+  const strong = items.filter((item) => item.count >= FREQUENT_MIN_COUNT);
+  const base = (strong.length ? strong : items).slice(0, FREQUENT_LIMIT);
+
+  return base.map((item) => item.emoji);
+}
+
+function getRecentEmojis(excludeSet) {
+  if (!emojiUsage.size) return [];
+
+  const items = [];
+  for (const [emoji, stats] of emojiUsage.entries()) {
+    if (!stats || !stats.lastUsed) continue;
+    if (excludeSet && excludeSet.has(emoji)) continue;
+    items.push({
+      emoji,
+      lastUsed: typeof stats.lastUsed === "number" ? stats.lastUsed : 0
+    });
+  }
+
+  if (!items.length) return [];
+
+  items.sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
+  return items.slice(0, RECENT_LIMIT).map((item) => item.emoji);
+}
 
 function initEmojiRegex() {
   try {
@@ -86,6 +210,12 @@ function initEmojiRegex() {
     emojiRegex = null;
   }
 }
+
+const searchState = {
+  query: "",
+  category: "all",
+  groupByCategory: true
+};
 
 function isEmoji(char) {
   if (!char) return false;
@@ -152,6 +282,11 @@ function generateEmojiByCategory() {
 }
 
 async function copyEmoji(emoji) {
+  // Track usage for Frequently/Recently Used sections.
+  recordUsage(emoji);
+  schedulePersistUsage();
+  applyFiltersAndRender();
+
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(emoji);
@@ -173,8 +308,6 @@ async function copyEmoji(emoji) {
 }
 
 function renderCategories(categories, groupByCategory) {
-  categoriesEl.innerHTML = "";
-
   if (!categories || categories.size === 0) {
     const empty = document.createElement("p");
     empty.textContent = "No emoji match your current filters.";
@@ -240,6 +373,31 @@ function getEmojiTitle(emoji, categoryName) {
     return `${emoji} — ${categoryName}`;
   }
   return emoji;
+}
+
+function renderSpecialSection(title, emojis) {
+  if (!emojis || !emojis.length) return;
+
+  const section = document.createElement("section");
+
+  const heading = document.createElement("h2");
+  heading.textContent = `${title} (${emojis.length})`;
+  section.appendChild(heading);
+
+  const grid = document.createElement("div");
+  grid.className = "emoji-grid";
+
+  for (const emoji of emojis) {
+    const button = document.createElement("button");
+    button.className = "emoji-button";
+    button.textContent = emoji;
+    button.title = getEmojiTitle(emoji, title);
+    button.addEventListener("click", () => copyEmoji(emoji));
+    grid.appendChild(button);
+  }
+
+  section.appendChild(grid);
+  categoriesEl.appendChild(section);
 }
 
 function setStatus(text) {
@@ -324,6 +482,35 @@ function populateCategorySelect(categories) {
 
 function applyFiltersAndRender() {
   const filtered = filterCategories();
+  categoriesEl.innerHTML = "";
+
+  // Build the set of emojis that are part of the current filtered result.
+  const candidateSet = new Set();
+  for (const emojis of filtered.values()) {
+    for (const emoji of emojis) {
+      candidateSet.add(emoji);
+    }
+  }
+
+  if (candidateSet.size > 0) {
+    // Frequently Used section: only include emojis that are also in the
+    // current filtered result (so category/search filters are respected).
+    const frequentAll = getFrequentEmojis();
+    const frequentEmojis = frequentAll.filter((emoji) => candidateSet.has(emoji));
+    if (frequentEmojis.length) {
+      renderSpecialSection("Frequently Used", frequentEmojis);
+    }
+
+    // Recently Used section: same restriction, and avoid duplicating items
+    // already shown in Frequently Used.
+    const excludeSet = new Set(frequentEmojis);
+    const recentAll = getRecentEmojis(excludeSet);
+    const recentEmojis = recentAll.filter((emoji) => candidateSet.has(emoji));
+    if (recentEmojis.length) {
+      renderSpecialSection("Recently Used", recentEmojis);
+    }
+  }
+
   renderCategories(filtered, searchState.groupByCategory);
 }
 
@@ -357,6 +544,7 @@ function init() {
 
   // Yield to the UI thread before heavy work.
   setTimeout(async () => {
+    loadUsageFromStorage();
     await loadCldrEmojiNames();
     allCategories = generateEmojiByCategory();
     populateCategorySelect(allCategories);
