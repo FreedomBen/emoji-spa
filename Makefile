@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: all build run install-tauri dev update-emoji
+.PHONY: all build run install-tauri dev update-emoji build-release
 
 all: build
 
@@ -9,6 +9,9 @@ build:
 	cd src-tauri && \
 		cargo update && \
 		cargo build
+
+release:
+	./build_in_container.sh
 
 run: build
 	cd src-tauri && \
