@@ -1,15 +1,15 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Unicode Emoji Picker",
+  "productName": "Emoji Spa",
   "version": "0.1.0",
-  "identifier": "com.example.unicode_emoji_picker",
+  "identifier": "emoji.spa",
   "build": {
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
-        "title": "Unicode Emoji Picker",
+        "title": "Emoji Spa",
         "width": 1000,
         "height": 800,
         "resizable": true,
@@ -28,4 +28,3 @@
     ]
   }
 }
-

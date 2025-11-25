@@ -1,4 +1,4 @@
-# Unicode Emoji Picker (Tauri)
+# Emoji Spa (Tauri)
 
 This is a simple desktop application built with [Tauri](https://tauri.app/) and a plain HTML/CSS/JS frontend.
 
@@ -83,4 +83,3 @@ cargo tauri build
 2. Scroll through the emoji categories.
 3. Click any emoji to copy it to your clipboard.
 4. Paste the emoji into any other application that accepts text input.
-
