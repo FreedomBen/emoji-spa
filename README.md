@@ -35,7 +35,9 @@ sudo dnf install \
   pango-devel \
   openssl-devel \
   librsvg2-devel \
-  libappindicator-gtk3-devel
+  libappindicator-gtk3-devel \
+  javascriptcoregtk4.1-devel \
+  libsoup3-devel
 ```
 
 The build log in `src-tauri/out.log` shows failures like:
@@ -59,6 +61,9 @@ From the repository root:
 
 ```bash
 cd src-tauri
+cargo update
+cargo build
+cargo install tauri-cli
 cargo tauri dev
 ```
 
