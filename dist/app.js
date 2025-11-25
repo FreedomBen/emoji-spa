@@ -560,13 +560,29 @@ function renderCategories(categories, groupByCategory) {
 
 function getEmojiTitle(emoji, categoryName) {
   const meta = metadataByEmoji.get(emoji);
+  const stats = emojiUsage.get(emoji);
+  const usageCount = stats && typeof stats.count === "number" ? stats.count : 0;
+
+  let label;
   if (meta && meta.name) {
-    return `${emoji} — ${meta.name}`;
+    label = meta.name;
+  } else if (categoryName) {
+    label = categoryName;
+  } else {
+    label = "";
   }
-  if (categoryName) {
-    return `${emoji} — ${categoryName}`;
+
+  let base = emoji;
+  if (label) {
+    base += ` — ${label}`;
   }
-  return emoji;
+
+  if (usageCount > 0) {
+    const timesLabel = usageCount === 1 ? "time" : "times";
+    base += ` (used ${usageCount} ${timesLabel})`;
+  }
+
+  return base;
 }
 
 function renderSpecialSection(title, emojis) {
