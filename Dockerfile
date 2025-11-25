@@ -29,9 +29,8 @@ RUN cargo tauri build --bundles all
 
 # Collect build artifacts in a single directory for export.
 RUN mkdir -p /artifacts && \
-    cp target/release/characters-tauri /artifacts/characters-tauri && \
+    cp target/release/emoji-spa /artifacts/emoji-spa && \
     cp -r target/release/bundle /artifacts/bundle
 
 # Default command is a shell; the container is mainly used as a build environment.
 CMD ["bash"]
-

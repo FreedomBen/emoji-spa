@@ -1,5 +1,5 @@
 [package]
-name = "characters-tauri"
+name = "emoji-spa"
 version = "0.1.0"
 description = "Emoji Spa Tauri App"
 edition = "2021"

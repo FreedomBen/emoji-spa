@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-IMAGE_NAME="characters-tauri-builder"
+IMAGE_NAME="emoji-spa-builder"
 ARTIFACTS_DIR="${ARTIFACTS_DIR:-build-artifacts}"
 
 echo "Building Docker image '${IMAGE_NAME}'..."
@@ -19,4 +19,3 @@ docker rm "${CONTAINER_ID}" >/dev/null
 
 echo "Build complete. Artifacts are in '${ARTIFACTS_DIR}':"
 ls -R "${ARTIFACTS_DIR}"
-
