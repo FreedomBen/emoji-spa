@@ -11,10 +11,24 @@
       <header>
         <h1>Unicode Emoji Picker</h1>
         <p id="status">Generating emoji list...</p>
+        <div class="controls">
+          <input
+            id="searchInput"
+            type="search"
+            placeholder="Search by emoji or category…"
+            autocomplete="off"
+          />
+          <select id="categorySelect">
+            <option value="all">All categories</option>
+          </select>
+          <label class="toggle">
+            <input id="groupByCategory" type="checkbox" checked />
+            <span>Group by category</span>
+          </label>
+        </div>
       </header>
       <main id="categories"></main>
     </div>
     <script type="module" src="app.js"></script>
   </body>
 </html>
-

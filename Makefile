@@ -1,20 +1,18 @@
 SHELL := /bin/bash
 
-.PHONY: all run build install-tauri dev
+.PHONY: all build run install-tauri dev
 
-all: run
-
-run:
-	cd src-tauri && \
-		cargo update && \
-		cargo build && \
-		cargo install tauri-cli && \
-		cargo tauri dev
+all: build
 
 build:
 	cd src-tauri && \
 		cargo update && \
 		cargo build
+
+run: build
+	cd src-tauri && \
+		cargo install tauri-cli && \
+		cargo tauri dev
 
 install-tauri:
 	cargo install tauri-cli
@@ -22,4 +20,3 @@ install-tauri:
 dev:
 	cd src-tauri && \
 		cargo tauri dev
-
