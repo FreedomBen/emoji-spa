@@ -52,6 +52,19 @@ const CATEGORY_KEYWORDS = {
 
 let lastHiddenMatches = 0;
 
+function getSelectedCategoryFilter() {
+  const cat = searchState.category;
+  if (
+    cat === "Pinned" ||
+    cat === "Frequently Used" ||
+    cat === "Recently Used" ||
+    cat === "Hidden"
+  ) {
+    return "all";
+  }
+  return cat;
+}
+
 async function loadCldrEmojiNames() {
   try {
     const response = await fetch("./emoji-cldr.json");
@@ -264,27 +277,68 @@ function getRecentEmojis(excludeSet) {
   return items.slice(0, RECENT_LIMIT).map((item) => item.emoji);
 }
 
-function countHiddenMatchesForCurrentFilters() {
-  if (!allCategories || !hiddenEmojis.size) return 0;
+function getHiddenMatchesForCurrentFilters() {
+  if (!hiddenEmojis.size) return [];
 
   const query = searchState.query.trim().toLowerCase();
   const tokens = query ? query.split(/\s+/).filter(Boolean) : [];
   const selectedCategory = searchState.category;
+  const baseCategory = getSelectedCategoryFilter();
 
-  let count = 0;
+  // Build the candidate hidden emojis for this filter mode.
+  let candidates;
 
-  for (const emoji of hiddenEmojis) {
+  if (selectedCategory === "Pinned") {
+    // Hidden + pinned
+    candidates = [];
+    for (const emoji of hiddenEmojis) {
+      if (pinnedEmojis.has(emoji)) {
+        candidates.push(emoji);
+      }
+    }
+  } else if (selectedCategory === "Frequently Used") {
+    const frequentSet = new Set(getFrequentEmojis());
+    candidates = [];
+    for (const emoji of hiddenEmojis) {
+      if (frequentSet.has(emoji)) {
+        candidates.push(emoji);
+      }
+    }
+  } else if (selectedCategory === "Recently Used") {
+    const recentSet = new Set(getRecentEmojis());
+    candidates = [];
+    for (const emoji of hiddenEmojis) {
+      if (recentSet.has(emoji)) {
+        candidates.push(emoji);
+      }
+    }
+  } else {
+    // All / base emoji categories / Hidden mode
+    if (!allCategories) return [];
+    candidates = [];
+    for (const emoji of hiddenEmojis) {
+      if (!emoji) continue;
+      const cp = emoji.codePointAt(0);
+      const categoryName = cp != null ? getCategory(cp) : "Other Emoji";
+      if (baseCategory !== "all" && categoryName !== baseCategory) {
+        continue;
+      }
+      candidates.push(emoji);
+    }
+  }
+
+  if (!candidates.length) return [];
+
+  const matchesList = [];
+
+  for (const emoji of candidates) {
     if (!emoji) continue;
 
     const cp = emoji.codePointAt(0);
     const categoryName = cp != null ? getCategory(cp) : "Other Emoji";
 
-    if (selectedCategory !== "all" && categoryName !== selectedCategory) {
-      continue;
-    }
-
     if (!tokens.length) {
-      count++;
+      matchesList.push(emoji);
       continue;
     }
 
@@ -317,11 +371,11 @@ function countHiddenMatchesForCurrentFilters() {
     );
 
     if (matches) {
-      count++;
+      matchesList.push(emoji);
     }
   }
 
-  return count;
+  return matchesList;
 }
 
 function initEmojiRegex() {
@@ -536,21 +590,24 @@ function renderSpecialSection(title, emojis) {
   categoriesEl.appendChild(section);
 }
 
-function renderHiddenSection() {
-  if (!hiddenEmojis.size) return;
+function renderHiddenSection(hiddenList) {
+  const list = Array.isArray(hiddenList)
+    ? hiddenList
+    : Array.from(hiddenEmojis);
+  if (!list.length) return;
 
   const section = document.createElement("section");
   const details = document.createElement("details");
   details.className = "emoji-hidden-section";
 
   const summary = document.createElement("summary");
-  summary.textContent = `Hidden (${hiddenEmojis.size})`;
+  summary.textContent = `Hidden (${list.length})`;
   details.appendChild(summary);
 
   const grid = document.createElement("div");
   grid.className = "emoji-grid";
 
-  for (const emoji of hiddenEmojis) {
+  for (const emoji of list) {
     const button = document.createElement("button");
     button.className = "emoji-button";
     button.textContent = emoji;
@@ -632,7 +689,7 @@ function filterCategories() {
   }
 
   const query = searchState.query.trim().toLowerCase();
-  const selectedCategory = searchState.category;
+  const selectedCategory = getSelectedCategoryFilter();
   const tokens = query ? query.split(/\s+/).filter(Boolean) : [];
 
   const result = new Map();
@@ -691,23 +748,59 @@ function filterCategories() {
 function populateCategorySelect(categories) {
   if (!categorySelect) return;
 
-  // Keep the "All categories" option.
-  const seen = new Set(["all"]);
+  const previousValue = categorySelect.value || searchState.category || "all";
+
+  categorySelect.innerHTML = "";
+
+  function addOption(value, label) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    categorySelect.appendChild(option);
+  }
+
+  addOption("all", "All categories");
+
+  if (pinnedEmojis.size > 0) {
+    addOption("Pinned", "Pinned");
+  }
+
+  if (getFrequentEmojis().length > 0) {
+    addOption("Frequently Used", "Frequently Used");
+  }
+
+  if (getRecentEmojis().length > 0) {
+    addOption("Recently Used", "Recently Used");
+  }
+
+  const seen = new Set(["all", "Pinned", "Frequently Used", "Recently Used"]);
   for (const [name] of categories.entries()) {
     if (seen.has(name)) continue;
-    const option = document.createElement("option");
-    option.value = name;
-    option.textContent = name;
-    categorySelect.appendChild(option);
+    addOption(name, name);
     seen.add(name);
   }
+
+  // Hidden appears last to mirror the visual order of sections.
+  if (hiddenEmojis.size > 0) {
+    addOption("Hidden", "Hidden");
+  }
+
+  const options = Array.from(categorySelect.options);
+  const hasPrevious = options.some((opt) => opt.value === previousValue);
+  categorySelect.value = hasPrevious ? previousValue : "all";
+  searchState.category = categorySelect.value;
 }
 
 function applyFiltersAndRender() {
   const filtered = filterCategories();
   categoriesEl.innerHTML = "";
 
-  lastHiddenMatches = countHiddenMatchesForCurrentFilters();
+  const hiddenMatches = getHiddenMatchesForCurrentFilters();
+  lastHiddenMatches = hiddenMatches.length;
+
+  if (allCategories) {
+    populateCategorySelect(allCategories);
+  }
 
   // Build the set of emojis that are part of the current filtered result.
   const candidateSet = new Set();
@@ -717,24 +810,85 @@ function applyFiltersAndRender() {
     }
   }
 
+  const hasQuery = searchState.query.trim().length > 0;
+  const selectedCategory = searchState.category;
+
+  // Special filter modes (Pinned / Frequently Used / Recently Used / Hidden)
+  if (selectedCategory === "Pinned") {
+    const pinnedForView = getPinnedEmojisForCandidates(candidateSet);
+    if (pinnedForView.length) {
+      renderSpecialSection("Pinned", pinnedForView);
+    } else {
+      renderCategories(new Map(), searchState.groupByCategory);
+    }
+    if (hiddenMatches.length > 0) {
+      renderHiddenSection(hiddenMatches);
+    }
+    return;
+  }
+
+  if (selectedCategory === "Frequently Used") {
+    const frequentAll = getFrequentEmojis();
+    const frequentEmojis = frequentAll.filter((emoji) => candidateSet.has(emoji));
+    if (frequentEmojis.length) {
+      renderSpecialSection("Frequently Used", frequentEmojis);
+    } else {
+      renderCategories(new Map(), searchState.groupByCategory);
+    }
+    if (hiddenMatches.length > 0) {
+      renderHiddenSection(hiddenMatches);
+    }
+    return;
+  }
+
+  if (selectedCategory === "Recently Used") {
+    const recentAll = getRecentEmojis();
+    const recentEmojis = recentAll.filter((emoji) => candidateSet.has(emoji));
+    if (recentEmojis.length) {
+      renderSpecialSection("Recently Used", recentEmojis);
+    } else {
+      renderCategories(new Map(), searchState.groupByCategory);
+    }
+    if (hiddenMatches.length > 0) {
+      renderHiddenSection(hiddenMatches);
+    }
+    return;
+  }
+
+  if (selectedCategory === "Hidden") {
+    // Only show the Hidden section in this mode.
+    if (!hasQuery) {
+      // No search text: show all hidden emoji.
+      if (hiddenEmojis.size > 0) {
+        renderHiddenSection();
+      } else {
+        renderCategories(new Map(), searchState.groupByCategory);
+      }
+    } else {
+      // With search text: only show matching hidden emoji.
+      if (hiddenMatches.length > 0) {
+        renderHiddenSection(hiddenMatches);
+      } else {
+        renderCategories(new Map(), searchState.groupByCategory);
+      }
+    }
+    return;
+  }
+
+  // Default mode: show pinned / frequent / recent sections plus categories,
+  // then the Hidden section (if appropriate).
   if (candidateSet.size > 0) {
-    // Pinned section: always first, but restricted to emojis that are part of
-    // the current filtered result (search/category-aware).
     const pinnedForView = getPinnedEmojisForCandidates(candidateSet);
     if (pinnedForView.length) {
       renderSpecialSection("Pinned", pinnedForView);
     }
 
-    // Frequently Used section: only include emojis that are also in the
-    // current filtered result (so category/search filters are respected).
     const frequentAll = getFrequentEmojis();
     const frequentEmojis = frequentAll.filter((emoji) => candidateSet.has(emoji));
     if (frequentEmojis.length) {
       renderSpecialSection("Frequently Used", frequentEmojis);
     }
 
-    // Recently Used section: same restriction, but allow overlap with
-    // Frequently Used (duplicates across sections are fine).
     const recentAll = getRecentEmojis();
     const recentEmojis = recentAll.filter((emoji) => candidateSet.has(emoji));
     if (recentEmojis.length) {
@@ -743,9 +897,18 @@ function applyFiltersAndRender() {
   }
 
   renderCategories(filtered, searchState.groupByCategory);
-  const hasQuery = searchState.query.trim().length > 0;
-  if (!hasQuery || lastHiddenMatches > 0) {
-    renderHiddenSection();
+
+  if (!hasQuery) {
+    const baseCategory = getSelectedCategoryFilter();
+    if (baseCategory === "all") {
+      if (hiddenEmojis.size > 0) {
+        renderHiddenSection();
+      }
+    } else if (hiddenMatches.length > 0) {
+      renderHiddenSection(hiddenMatches);
+    }
+  } else if (hiddenMatches.length > 0) {
+    renderHiddenSection(hiddenMatches);
   }
 }
 
