@@ -143,6 +143,13 @@ function loadUsageFromStorage() {
         hiddenEmojis.add(emoji);
       }
     }
+
+    if (typeof parsed.groupByCategory === "boolean") {
+      searchState.groupByCategory = parsed.groupByCategory;
+      if (groupByCategoryCheckbox) {
+        groupByCategoryCheckbox.checked = parsed.groupByCategory;
+      }
+    }
   } catch (error) {
     console.error("Failed to load emoji usage from storage:", error);
   }
@@ -163,7 +170,8 @@ function persistUsage() {
       version: 1,
       items,
       pinned: Array.from(pinnedEmojis),
-      hidden: Array.from(hiddenEmojis)
+      hidden: Array.from(hiddenEmojis),
+      groupByCategory: Boolean(searchState.groupByCategory)
     };
 
     window.localStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(payload));
@@ -953,6 +961,7 @@ function initControls() {
   if (groupByCategoryCheckbox) {
     groupByCategoryCheckbox.addEventListener("change", (event) => {
       searchState.groupByCategory = Boolean(event.target.checked);
+      schedulePersistUsage();
       applyFiltersAndRender();
     });
   }
