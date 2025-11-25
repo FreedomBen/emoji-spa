@@ -24,6 +24,8 @@ const FREQUENT_MIN_COUNT = 2;
 
 // emoji -> { count: number, lastUsed: number }
 const emojiUsage = new Map();
+// Set<string> of pinned emoji (iteration order is pin order).
+const pinnedEmojis = new Set();
 let usageSaveTimeout = null;
 let contextMenuEmoji = null;
 let contextMenuCategory = null;
@@ -110,6 +112,13 @@ function loadUsageFromStorage() {
 
       emojiUsage.set(emoji, { count, lastUsed });
     }
+
+    const pinned = Array.isArray(parsed.pinned) ? parsed.pinned : [];
+    for (const emoji of pinned) {
+      if (typeof emoji === "string" && emoji) {
+        pinnedEmojis.add(emoji);
+      }
+    }
   } catch (error) {
     console.error("Failed to load emoji usage from storage:", error);
   }
@@ -128,7 +137,8 @@ function persistUsage() {
 
     const payload = {
       version: 1,
-      items
+      items,
+      pinned: Array.from(pinnedEmojis)
     };
 
     window.localStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(payload));
@@ -158,6 +168,30 @@ function recordUsage(emoji) {
     lastUsed: now
   };
   emojiUsage.set(emoji, next);
+}
+
+function pinEmoji(emoji) {
+  if (!emoji) return;
+  pinnedEmojis.add(emoji);
+  schedulePersistUsage();
+}
+
+function unpinEmoji(emoji) {
+  if (!emoji) return;
+  if (pinnedEmojis.delete(emoji)) {
+    schedulePersistUsage();
+  }
+}
+
+function getPinnedEmojisForCandidates(candidateSet) {
+  if (!pinnedEmojis.size || !candidateSet || !candidateSet.size) return [];
+  const result = [];
+  for (const emoji of pinnedEmojis) {
+    if (candidateSet.has(emoji)) {
+      result.push(emoji);
+    }
+  }
+  return result;
 }
 
 function getFrequentEmojis() {
@@ -421,6 +455,11 @@ function showEmojiContextMenu(event, emoji, categoryName) {
   contextMenuEmoji = emoji;
   contextMenuCategory = categoryName || null;
 
+  const pinButton = contextMenuEl.querySelector('[data-action="toggle-pin"]');
+  if (pinButton && pinButton instanceof HTMLElement) {
+    pinButton.textContent = pinnedEmojis.has(emoji) ? "Unpin" : "Pin";
+  }
+
   contextMenuEl.classList.remove("emoji-context-menu-hidden");
 
   const menuRect = contextMenuEl.getBoundingClientRect();
@@ -548,6 +587,13 @@ function applyFiltersAndRender() {
   }
 
   if (candidateSet.size > 0) {
+    // Pinned section: always first, but restricted to emojis that are part of
+    // the current filtered result (search/category-aware).
+    const pinnedForView = getPinnedEmojisForCandidates(candidateSet);
+    if (pinnedForView.length) {
+      renderSpecialSection("Pinned", pinnedForView);
+    }
+
     // Frequently Used section: only include emojis that are also in the
     // current filtered result (so category/search filters are respected).
     const frequentAll = getFrequentEmojis();
@@ -597,12 +643,25 @@ function initControls() {
        const action = target.getAttribute("data-action");
        if (!action) return;
 
-       // Stub: real behavior (pin/hide/reset) will be implemented later.
-       console.log("Emoji context action selected:", {
-         action,
-         emoji: contextMenuEmoji,
-         category: contextMenuCategory
-       });
+       if (!contextMenuEmoji) {
+         hideEmojiContextMenu();
+         return;
+       }
+
+       if (action === "toggle-pin") {
+         if (pinnedEmojis.has(contextMenuEmoji)) {
+           unpinEmoji(contextMenuEmoji);
+         } else {
+           pinEmoji(contextMenuEmoji);
+         }
+         applyFiltersAndRender();
+       } else if (action === "hide") {
+         // To be implemented in a future step.
+         console.log("Hide emoji (not yet implemented):", contextMenuEmoji);
+       } else if (action === "reset-usage") {
+         // To be implemented in a future step.
+         console.log("Reset usage (not yet implemented):", contextMenuEmoji);
+       }
 
        hideEmojiContextMenu();
      });
