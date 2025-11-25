@@ -17,8 +17,8 @@ for (const entry of EMOJI_METADATA) {
 }
 
 const USAGE_STORAGE_KEY = "emojiUsage.v1";
-const RECENT_LIMIT = 24;
-const FREQUENT_LIMIT = 24;
+const RECENT_LIMIT = 50;
+const FREQUENT_LIMIT = 50;
 const FREQUENT_MIN_COUNT = 2;
 
 // emoji -> { count: number, lastUsed: number }
@@ -501,10 +501,9 @@ function applyFiltersAndRender() {
       renderSpecialSection("Frequently Used", frequentEmojis);
     }
 
-    // Recently Used section: same restriction, and avoid duplicating items
-    // already shown in Frequently Used.
-    const excludeSet = new Set(frequentEmojis);
-    const recentAll = getRecentEmojis(excludeSet);
+    // Recently Used section: same restriction, but allow overlap with
+    // Frequently Used (duplicates across sections are fine).
+    const recentAll = getRecentEmojis();
     const recentEmojis = recentAll.filter((emoji) => candidateSet.has(emoji));
     if (recentEmojis.length) {
       renderSpecialSection("Recently Used", recentEmojis);
