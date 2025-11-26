@@ -64,6 +64,10 @@ const CATEGORY_KEYWORDS = {
 
 let lastHiddenMatches = 0;
 
+function setAllCategoriesForTest(categories) {
+  allCategories = categories;
+}
+
 function getSelectedCategoryFilter() {
   const cat = searchState.category;
   if (
@@ -92,10 +96,13 @@ async function loadCldrEmojiNames() {
         const emoji = entry.emoji;
         const existing = metadataByEmoji.get(emoji) || {};
         const name = entry.name || existing.name;
-        const keywords = [
+        const mergedKeywords = [
           ...(existing.keywords || []),
           ...(Array.isArray(entry.keywords) ? entry.keywords : [])
-        ];
+        ]
+          .map((kw) => String(kw))
+          .filter((kw) => kw && kw.trim().length > 0);
+        const keywords = Array.from(new Set(mergedKeywords));
         metadataByEmoji.set(emoji, { emoji, name, keywords });
       }
     } else if (data && typeof data === "object") {
@@ -103,10 +110,13 @@ async function loadCldrEmojiNames() {
         if (!emoji || !value) continue;
         const existing = metadataByEmoji.get(emoji) || {};
         const name = value.name || existing.name;
-        const keywords = [
+        const mergedKeywords = [
           ...(existing.keywords || []),
           ...(Array.isArray(value.keywords) ? value.keywords : [])
-        ];
+        ]
+          .map((kw) => String(kw))
+          .filter((kw) => kw && kw.trim().length > 0);
+        const keywords = Array.from(new Set(mergedKeywords));
         metadataByEmoji.set(emoji, { emoji, name, keywords });
       }
     }
@@ -509,20 +519,12 @@ function initEmojiRegex() {
   }
 }
 
-const searchState = {
-  query: "",
-  category: "all",
-  groupByCategory: true
-};
+function resetEmojiRegexForTest() {
+  emojiRegex = null;
+}
 
-function isEmoji(char) {
-  if (!char) return false;
-  if (emojiRegex) {
-    return emojiRegex.test(char);
-  }
-  // Fallback heuristic for environments without Unicode property escapes.
-  const cp = char.codePointAt(0);
-  if (cp === undefined) return false;
+function isEmojiCodePoint(cp) {
+  if (cp === undefined || cp === null) return false;
   if (
     (cp >= 0x1f300 && cp <= 0x1ffff) ||
     (cp >= 0x2600 && cp <= 0x26ff) ||
@@ -531,6 +533,28 @@ function isEmoji(char) {
     return true;
   }
   return false;
+}
+
+const searchState = {
+  query: "",
+  category: "all",
+  groupByCategory: true
+};
+
+function isEmoji(char) {
+  if (!char) return false;
+  const cp = char.codePointAt(0);
+  if (cp === undefined) return false;
+
+  if (emojiRegex) {
+    // Guard against environments that might classify non-emoji characters as Emoji.
+    if (!emojiRegex.test(char)) {
+      return false;
+    }
+  }
+
+  // Heuristic based on common emoji code point ranges.
+  return isEmojiCodePoint(cp);
 }
 
 function getCategory(cp) {
@@ -551,18 +575,23 @@ function getCategory(cp) {
   return "Other Emoji";
 }
 
-function generateEmojiByCategory() {
+function generateEmojiByCategoryInternal(maxCodePoint, isEmojiFn, getCategoryFn) {
   const categories = new Map();
-  const maxCodePoint = 0x10ffff;
+  const max =
+    typeof maxCodePoint === "number" && Number.isFinite(maxCodePoint) && maxCodePoint >= 0
+      ? Math.floor(maxCodePoint)
+      : 0x10ffff;
+  const isEmojiImpl = typeof isEmojiFn === "function" ? isEmojiFn : isEmoji;
+  const getCategoryImpl = typeof getCategoryFn === "function" ? getCategoryFn : getCategory;
 
-  for (let cp = 0; cp <= maxCodePoint; cp++) {
+  for (let cp = 0; cp <= max; cp++) {
     const char = String.fromCodePoint(cp);
-    if (!isEmoji(char)) continue;
+    if (!isEmojiImpl(char)) continue;
 
     // Filter out variation selectors and combining marks commonly used with emoji.
     if (cp === 0xfe0f || cp === 0x20e3) continue;
 
-    const category = getCategory(cp);
+    const category = getCategoryImpl(cp);
     if (!categories.has(category)) {
       categories.set(category, []);
     }
@@ -577,6 +606,10 @@ function generateEmojiByCategory() {
   );
 
   return sorted;
+}
+
+function generateEmojiByCategory() {
+  return generateEmojiByCategoryInternal(0x10ffff, isEmoji, getCategory);
 }
 
 async function copyEmoji(emoji) {
@@ -944,6 +977,10 @@ function getEmojiUsageRows() {
   const rows = [];
   const seen = new Set();
 
+  if (!emojiUsage.size) {
+    return rows;
+  }
+
   if (allCategories) {
     for (const [categoryName, emojis] of allCategories.entries()) {
       for (const emoji of emojis) {
@@ -1067,10 +1104,56 @@ function closeSettingsPanel() {
   settingsOverlay.setAttribute("aria-hidden", "true");
 }
 
+function computeCategorySelectOptions(categories, previousValue) {
+  const items = [];
+
+  items.push({ value: "all", label: "All categories" });
+
+  if (pinnedEmojis.size > 0) {
+    items.push({ value: "Pinned", label: "Pinned" });
+  }
+
+  if (getFrequentEmojis().length > 0) {
+    items.push({ value: "Frequently Used", label: "Frequently Used" });
+  }
+
+  if (getRecentEmojis().length > 0) {
+    items.push({ value: "Recently Used", label: "Recently Used" });
+  }
+
+  const seen = new Set(items.map((item) => item.value));
+
+  if (categories && typeof categories.entries === "function") {
+    const names = [];
+    for (const [name] of categories.entries()) {
+      if (!name || seen.has(name)) continue;
+      names.push(name);
+    }
+    names.sort((a, b) => a.localeCompare(b));
+    for (const name of names) {
+      items.push({ value: name, label: name });
+      seen.add(name);
+    }
+  }
+
+  if (hiddenEmojis.size > 0) {
+    items.push({ value: "Hidden", label: "Hidden" });
+    seen.add("Hidden");
+  }
+
+  const values = items.map((item) => item.value);
+  const selectedValue =
+    previousValue && values.includes(previousValue) ? previousValue : "all";
+
+  return { items, selectedValue };
+}
+
 function populateCategorySelect(categories) {
   if (!categorySelect) return;
 
   const previousValue = categorySelect.value || searchState.category || "all";
+
+  const { items, selectedValue } = computeCategorySelectOptions(categories, previousValue);
 
   categorySelect.innerHTML = "";
 
@@ -1081,35 +1164,11 @@ function populateCategorySelect(categories) {
     categorySelect.appendChild(option);
   }
 
-  addOption("all", "All categories");
-
-  if (pinnedEmojis.size > 0) {
-    addOption("Pinned", "Pinned");
+  for (const item of items) {
+    addOption(item.value, item.label);
   }
 
-  if (getFrequentEmojis().length > 0) {
-    addOption("Frequently Used", "Frequently Used");
-  }
-
-  if (getRecentEmojis().length > 0) {
-    addOption("Recently Used", "Recently Used");
-  }
-
-  const seen = new Set(["all", "Pinned", "Frequently Used", "Recently Used"]);
-  for (const [name] of categories.entries()) {
-    if (seen.has(name)) continue;
-    addOption(name, name);
-    seen.add(name);
-  }
-
-  // Hidden appears last to mirror the visual order of sections.
-  if (hiddenEmojis.size > 0) {
-    addOption("Hidden", "Hidden");
-  }
-
-  const options = Array.from(categorySelect.options);
-  const hasPrevious = options.some((opt) => opt.value === previousValue);
-  categorySelect.value = hasPrevious ? previousValue : "all";
+  categorySelect.value = selectedValue;
   searchState.category = categorySelect.value;
 }
 
@@ -1234,7 +1293,12 @@ function applyFiltersAndRender() {
   }
 }
 
+let controlsInitialized = false;
+
 function initControls() {
+  if (controlsInitialized) return;
+  controlsInitialized = true;
+
   if (searchInput) {
     searchInput.addEventListener("input", (event) => {
       searchState.query = event.target.value || "";
@@ -1385,3 +1449,60 @@ function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
+
+export {
+  USAGE_STORAGE_KEY,
+  THEME_STORAGE_KEY,
+  THEME_SYSTEM,
+  THEME_LIGHT,
+  THEME_DARK,
+  RECENT_LIMIT,
+  FREQUENT_LIMIT,
+  FREQUENT_MIN_COUNT,
+  CATEGORY_KEYWORDS,
+  metadataByEmoji,
+  emojiUsage,
+  pinnedEmojis,
+  hiddenEmojis,
+  searchState,
+  initEmojiRegex,
+  resetEmojiRegexForTest,
+  isEmoji,
+  getCategory,
+  generateEmojiByCategory,
+  generateEmojiByCategoryInternal as generateEmojiByCategoryForTest,
+  loadCldrEmojiNames,
+  loadUsageFromStorage,
+  persistUsage,
+  schedulePersistUsage,
+  getPinnedEmojisForCandidates,
+  getFrequentEmojis,
+  getRecentEmojis,
+  getHiddenMatchesForCurrentFilters,
+  filterCategories,
+  getEmojiCategoryName,
+  getEmojiUsageRows,
+  renderEmojiUsageTable,
+  resetAllUsageCounts,
+  openSettingsPanel,
+  closeSettingsPanel,
+  computeCategorySelectOptions,
+  populateCategorySelect,
+  applyFiltersAndRender,
+  loadThemePreference,
+  persistThemePreference,
+  applyTheme,
+  syncThemeControlsFromPreference,
+  initControls,
+  handleSystemThemeChange,
+  recordUsage,
+  pinEmoji,
+  unpinEmoji,
+  hideEmoji,
+  unhideEmoji,
+  resetUsage,
+  copyEmoji,
+  setStatus,
+  setAllCategoriesForTest,
+  init
+};

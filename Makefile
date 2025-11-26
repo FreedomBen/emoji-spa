@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: all build run install-tauri dev update-emoji build-release
+.PHONY: all build run install-tauri dev update-emoji build-release test
 
 all: build
 
@@ -27,3 +27,11 @@ dev:
 
 update-emoji:
 	bash scripts/generate_emoji_cldr.sh
+
+test:
+	@echo "Running JavaScript tests with Vitest..." >&2
+	npm test
+	@echo "Running Rust tests in src-tauri with sanitized PATH (no linuxbrew)..." >&2
+	cd src-tauri && \
+		SANITIZED_PATH="$$(printf '%s\n' \"$$PATH\" | tr ':' '\n' | grep -v 'linuxbrew' | paste -sd: -)" && \
+		PATH="$$SANITIZED_PATH" cargo test

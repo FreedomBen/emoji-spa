@@ -1,0 +1,17 @@
+[
+  {
+    "emoji": "😀",
+    "name": "grinning face (CLDR)",
+    "keywords": ["grinning", "face", "smile"]
+  },
+  {
+    "emoji": "🦎",
+    "name": "lizard",
+    "keywords": ["lizard", "reptile"]
+  },
+  {
+    "emoji": "🍕",
+    "keywords": ["pizza", "slice", "cheese"]
+  }
+]
+

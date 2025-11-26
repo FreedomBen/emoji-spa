@@ -28,7 +28,9 @@ sudo dnf groupinstall "Development Tools"
 Then install the common Tauri GUI/WebKit dependencies:
 
 ```bash
-sudo dnf install \
+sudo dnf install -y \
+  rust \
+  cargo \
   gtk3-devel \
   webkit2gtk3-devel \
   cairo-devel \
