@@ -362,6 +362,12 @@ section h2 {
   color: var(--color-muted);
 }
 
+.settings-toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
 .settings-danger-button {
   border-radius: 0.375rem;
   border: 1px solid #b91c1c;

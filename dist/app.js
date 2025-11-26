@@ -5,6 +5,8 @@ const categoriesEl = document.getElementById("categories");
 const searchInput = document.getElementById("searchInput");
 const categorySelect = document.getElementById("categorySelect");
 const groupByCategoryCheckbox = document.getElementById("groupByCategory");
+const showFrequentlyUsedCheckbox = document.getElementById("showFrequentlyUsed");
+const showRecentlyUsedCheckbox = document.getElementById("showRecentlyUsed");
 const contextMenuEl = document.getElementById("emojiContextMenu");
 const settingsButton = document.getElementById("settingsButton");
 const settingsOverlay = document.getElementById("settingsOverlay");
@@ -63,6 +65,50 @@ const CATEGORY_KEYWORDS = {
 };
 
 let lastHiddenMatches = 0;
+const usageSectionPreferences = {
+  showFrequentlyUsed: true,
+  showRecentlyUsed: true
+};
+
+function syncUsageSectionControls() {
+  if (showFrequentlyUsedCheckbox) {
+    showFrequentlyUsedCheckbox.checked = usageSectionPreferences.showFrequentlyUsed;
+  }
+  if (showRecentlyUsedCheckbox) {
+    showRecentlyUsedCheckbox.checked = usageSectionPreferences.showRecentlyUsed;
+  }
+}
+
+function updateUsageSectionPreference(key, value, options = {}) {
+  if (!Object.prototype.hasOwnProperty.call(usageSectionPreferences, key)) {
+    return false;
+  }
+  const nextValue = Boolean(value);
+  if (usageSectionPreferences[key] === nextValue) {
+    return false;
+  }
+  usageSectionPreferences[key] = nextValue;
+  syncUsageSectionControls();
+  if (options.persist !== false) {
+    persistUsage();
+  }
+  if (options.rerender !== false) {
+    applyFiltersAndRender();
+  }
+  return true;
+}
+
+function setUsageSectionPreferencesForTest(preferences) {
+  if (!preferences || typeof preferences !== "object") return;
+  for (const key of ["showFrequentlyUsed", "showRecentlyUsed"]) {
+    if (typeof preferences[key] === "boolean") {
+      updateUsageSectionPreference(key, preferences[key], {
+        persist: false,
+        rerender: false
+      });
+    }
+  }
+}
 
 function setAllCategoriesForTest(categories) {
   allCategories = categories;
@@ -166,12 +212,22 @@ function loadUsageFromStorage() {
       }
     }
 
+    if (typeof parsed.showFrequentlyUsed === "boolean") {
+      usageSectionPreferences.showFrequentlyUsed = parsed.showFrequentlyUsed;
+    }
+
+    if (typeof parsed.showRecentlyUsed === "boolean") {
+      usageSectionPreferences.showRecentlyUsed = parsed.showRecentlyUsed;
+    }
+
     if (typeof parsed.groupByCategory === "boolean") {
       searchState.groupByCategory = parsed.groupByCategory;
       if (groupByCategoryCheckbox) {
         groupByCategoryCheckbox.checked = parsed.groupByCategory;
       }
     }
+
+    syncUsageSectionControls();
   } catch (error) {
     console.error("Failed to load emoji usage from storage:", error);
   }
@@ -193,7 +249,9 @@ function persistUsage() {
       items,
       pinned: Array.from(pinnedEmojis),
       hidden: Array.from(hiddenEmojis),
-      groupByCategory: Boolean(searchState.groupByCategory)
+      groupByCategory: Boolean(searchState.groupByCategory),
+      showFrequentlyUsed: Boolean(usageSectionPreferences.showFrequentlyUsed),
+      showRecentlyUsed: Boolean(usageSectionPreferences.showRecentlyUsed)
     };
 
     window.localStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(payload));
@@ -416,6 +474,8 @@ function getHiddenMatchesForCurrentFilters() {
   const tokens = query ? query.split(/\s+/).filter(Boolean) : [];
   const selectedCategory = searchState.category;
   const baseCategory = getSelectedCategoryFilter();
+  const frequentEnabled = usageSectionPreferences.showFrequentlyUsed;
+  const recentEnabled = usageSectionPreferences.showRecentlyUsed;
 
   // Build the candidate hidden emojis for this filter mode.
   let candidates;
@@ -428,7 +488,7 @@ function getHiddenMatchesForCurrentFilters() {
         candidates.push(emoji);
       }
     }
-  } else if (selectedCategory === "Frequently Used") {
+  } else if (selectedCategory === "Frequently Used" && frequentEnabled) {
     const frequentSet = new Set(getFrequentEmojis());
     candidates = [];
     for (const emoji of hiddenEmojis) {
@@ -436,7 +496,7 @@ function getHiddenMatchesForCurrentFilters() {
         candidates.push(emoji);
       }
     }
-  } else if (selectedCategory === "Recently Used") {
+  } else if (selectedCategory === "Recently Used" && recentEnabled) {
     const recentSet = new Set(getRecentEmojis());
     candidates = [];
     for (const emoji of hiddenEmojis) {
@@ -1106,6 +1166,8 @@ function closeSettingsPanel() {
 
 function computeCategorySelectOptions(categories, previousValue) {
   const items = [];
+  const frequentEnabled = usageSectionPreferences.showFrequentlyUsed;
+  const recentEnabled = usageSectionPreferences.showRecentlyUsed;
 
   items.push({ value: "all", label: "All categories" });
 
@@ -1113,11 +1175,11 @@ function computeCategorySelectOptions(categories, previousValue) {
     items.push({ value: "Pinned", label: "Pinned" });
   }
 
-  if (getFrequentEmojis().length > 0) {
+  if (frequentEnabled && getFrequentEmojis().length > 0) {
     items.push({ value: "Frequently Used", label: "Frequently Used" });
   }
 
-  if (getRecentEmojis().length > 0) {
+  if (recentEnabled && getRecentEmojis().length > 0) {
     items.push({ value: "Recently Used", label: "Recently Used" });
   }
 
@@ -1193,6 +1255,8 @@ function applyFiltersAndRender() {
 
   const hasQuery = searchState.query.trim().length > 0;
   const selectedCategory = searchState.category;
+  const frequentEnabled = usageSectionPreferences.showFrequentlyUsed;
+  const recentEnabled = usageSectionPreferences.showRecentlyUsed;
 
   // Special filter modes (Pinned / Frequently Used / Recently Used / Hidden)
   if (selectedCategory === "Pinned") {
@@ -1208,7 +1272,7 @@ function applyFiltersAndRender() {
     return;
   }
 
-  if (selectedCategory === "Frequently Used") {
+  if (selectedCategory === "Frequently Used" && frequentEnabled) {
     const frequentAll = getFrequentEmojis();
     const frequentEmojis = frequentAll.filter((emoji) => candidateSet.has(emoji));
     if (frequentEmojis.length) {
@@ -1222,7 +1286,7 @@ function applyFiltersAndRender() {
     return;
   }
 
-  if (selectedCategory === "Recently Used") {
+  if (selectedCategory === "Recently Used" && recentEnabled) {
     const recentAll = getRecentEmojis();
     const recentEmojis = recentAll.filter((emoji) => candidateSet.has(emoji));
     if (recentEmojis.length) {
@@ -1264,16 +1328,20 @@ function applyFiltersAndRender() {
       renderSpecialSection("Pinned", pinnedForView);
     }
 
-    const frequentAll = getFrequentEmojis();
-    const frequentEmojis = frequentAll.filter((emoji) => candidateSet.has(emoji));
-    if (frequentEmojis.length) {
-      renderSpecialSection("Frequently Used", frequentEmojis);
+    if (frequentEnabled) {
+      const frequentAll = getFrequentEmojis();
+      const frequentEmojis = frequentAll.filter((emoji) => candidateSet.has(emoji));
+      if (frequentEmojis.length) {
+        renderSpecialSection("Frequently Used", frequentEmojis);
+      }
     }
 
-    const recentAll = getRecentEmojis();
-    const recentEmojis = recentAll.filter((emoji) => candidateSet.has(emoji));
-    if (recentEmojis.length) {
-      renderSpecialSection("Recently Used", recentEmojis);
+    if (recentEnabled) {
+      const recentAll = getRecentEmojis();
+      const recentEmojis = recentAll.filter((emoji) => candidateSet.has(emoji));
+      if (recentEmojis.length) {
+        renderSpecialSection("Recently Used", recentEmojis);
+      }
     }
   }
 
@@ -1318,6 +1386,22 @@ function initControls() {
       searchState.groupByCategory = Boolean(event.target.checked);
       schedulePersistUsage();
       applyFiltersAndRender();
+    });
+  }
+
+  if (showFrequentlyUsedCheckbox) {
+    showFrequentlyUsedCheckbox.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      updateUsageSectionPreference("showFrequentlyUsed", target.checked);
+    });
+  }
+
+  if (showRecentlyUsedCheckbox) {
+    showRecentlyUsedCheckbox.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      updateUsageSectionPreference("showRecentlyUsed", target.checked);
     });
   }
 
@@ -1428,6 +1512,8 @@ function initControls() {
       }
     }
   });
+
+  syncUsageSectionControls();
 }
 
 function init() {
@@ -1465,6 +1551,8 @@ export {
   pinnedEmojis,
   hiddenEmojis,
   searchState,
+  updateUsageSectionPreference,
+  setUsageSectionPreferencesForTest,
   initEmojiRegex,
   resetEmojiRegexForTest,
   isEmoji,

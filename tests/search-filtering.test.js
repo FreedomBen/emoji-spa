@@ -12,7 +12,8 @@ import {
   setAllCategoriesForTest,
   getFrequentEmojis,
   getRecentEmojis,
-  initControls
+  initControls,
+  setUsageSectionPreferencesForTest
 } from "../dist/app.js";
 import { resetAppState } from "./test-utils.js";
 
@@ -112,6 +113,52 @@ describe("search and filtering", () => {
       "Hidden"
     ]);
     expect(selectedValue).toBe("Food & Drink");
+  });
+
+  it("omits Frequently Used controls when the preference is disabled", () => {
+    const categoriesEl = document.getElementById("categories");
+    expect(categoriesEl).toBeTruthy();
+
+    const now = Date.now();
+    emojiUsage.set("😀", { count: 5, lastUsed: now });
+    emojiUsage.set("🍕", { count: 3, lastUsed: now - 10 });
+    emojiUsage.set("🐱", { count: 2, lastUsed: now - 20 });
+
+    applyFiltersAndRender();
+    setUsageSectionPreferencesForTest({ showFrequentlyUsed: false });
+    applyFiltersAndRender();
+
+    const { items } = computeCategorySelectOptions(new Map(BASE_CATEGORIES), "all");
+    const values = items.map((item) => item.value);
+    expect(values).not.toContain("Frequently Used");
+
+    const headings = Array.from(
+      categoriesEl.querySelectorAll("section > h2")
+    ).map((h) => h.textContent || "");
+    expect(headings.some((text) => text.startsWith("Frequently Used"))).toBe(false);
+  });
+
+  it("omits Recently Used controls when the preference is disabled", () => {
+    const categoriesEl = document.getElementById("categories");
+    expect(categoriesEl).toBeTruthy();
+
+    const now = Date.now();
+    emojiUsage.set("😀", { count: 1, lastUsed: now });
+    emojiUsage.set("🍕", { count: 1, lastUsed: now - 5 });
+    emojiUsage.set("🐱", { count: 1, lastUsed: now - 10 });
+
+    applyFiltersAndRender();
+    setUsageSectionPreferencesForTest({ showRecentlyUsed: false });
+    applyFiltersAndRender();
+
+    const { items } = computeCategorySelectOptions(new Map(BASE_CATEGORIES), "all");
+    const values = items.map((item) => item.value);
+    expect(values).not.toContain("Recently Used");
+
+    const headings = Array.from(
+      categoriesEl.querySelectorAll("section > h2")
+    ).map((h) => h.textContent || "");
+    expect(headings.some((text) => text.startsWith("Recently Used"))).toBe(false);
   });
 
   it("shows only the Pinned section when category filter is set to Pinned", () => {

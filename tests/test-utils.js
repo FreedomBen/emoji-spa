@@ -3,7 +3,8 @@ import {
   pinnedEmojis,
   hiddenEmojis,
   searchState,
-  setAllCategoriesForTest
+  setAllCategoriesForTest,
+  setUsageSectionPreferencesForTest
 } from "../dist/app.js";
 
 export function resetAppState() {
@@ -16,6 +17,10 @@ export function resetAppState() {
   searchState.query = "";
   searchState.category = "all";
   searchState.groupByCategory = true;
+  setUsageSectionPreferencesForTest({
+    showFrequentlyUsed: true,
+    showRecentlyUsed: true
+  });
 
   if (typeof window !== "undefined" && window.localStorage) {
     window.localStorage.clear();
@@ -36,4 +41,3 @@ export function resetAppState() {
     statusEl.textContent = "";
   }
 }
-
