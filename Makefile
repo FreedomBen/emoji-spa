@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: all build run install-tauri dev update-emoji build-release test
+.PHONY: all build run install-tauri dev update-emoji build-release test clean
 
 all: build
 
@@ -35,3 +35,7 @@ test:
 	cd src-tauri && \
 		SANITIZED_PATH="$$(printf '%s\n' \"$$PATH\" | tr ':' '\n' | grep -v 'linuxbrew' | paste -sd: -)" && \
 		PATH="$$SANITIZED_PATH" cargo test
+
+clean:
+	rm -rf build-artifacts target
+	cd src-tauri && cargo clean
