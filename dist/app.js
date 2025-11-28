@@ -1650,6 +1650,27 @@ function focusSearchField(selectText = true) {
   return true;
 }
 
+function clearSearchAndFocus() {
+  if (!searchInput) return false;
+  const previousValue = searchInput.value || "";
+  const previousQuery = searchState.query || "";
+  shouldRestoreEmojiFocus = false;
+  if (previousValue.length > 0) {
+    searchInput.value = "";
+  } else if (document.activeElement !== searchInput) {
+    searchInput.value = "";
+  }
+  if (typeof searchInput.setSelectionRange === "function") {
+    searchInput.setSelectionRange(0, 0);
+  }
+  searchInput.focus();
+  searchState.query = "";
+  if (previousValue.length > 0 || previousQuery.length > 0) {
+    applyFiltersAndRender();
+  }
+  return true;
+}
+
 function initControls() {
   if (controlsInitialized) return;
   controlsInitialized = true;
@@ -1819,11 +1840,17 @@ function initControls() {
     }
 
     if (event.key === "Escape") {
+      let prevented = false;
       if (settingsOverlay && !settingsOverlay.classList.contains("settings-hidden")) {
         event.preventDefault();
+        prevented = true;
         closeSettingsPanel();
       } else {
         hideEmojiContextMenu();
+      }
+      const cleared = clearSearchAndFocus();
+      if (cleared && !prevented) {
+        event.preventDefault();
       }
     }
   });
