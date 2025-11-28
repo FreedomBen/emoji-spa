@@ -67,15 +67,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build Docker image with bundles
-        run: docker build -t emoji-spa-builder .
-
-      - name: Extract artifacts from image
-        run: |
-          container_id=$(docker create emoji-spa-builder)
-          mkdir -p build-artifacts
-          docker cp "$container_id":/artifacts ./build-artifacts
-          docker rm "$container_id"
+      - name: Build bundles via container script
+        env:
+          CONTAINER_RUNTIME: docker
+        run: ./build_in_container.sh
 
       - name: Upload bundles
         uses: actions/upload-artifact@v4
