@@ -836,6 +836,9 @@ function handleEmojiKeyNavigation(event, button) {
   const grid = button.closest(".emoji-grid");
   if (!grid) return false;
 
+  const visibleGrids = getVisibleEmojiGrids();
+  const firstVisibleGrid = visibleGrids.length ? visibleGrids[0] : null;
+
   const buttons = Array.from(grid.querySelectorAll(".emoji-button"));
   const currentIndex = buttons.indexOf(button);
   if (currentIndex === -1) return false;
@@ -879,6 +882,17 @@ function handleEmojiKeyNavigation(event, button) {
         const prevGrid = findAdjacentEmojiGrid(grid, -1);
         if (prevGrid) {
           targetButton = getAlignedButtonFromGrid(prevGrid, true, columnIndex);
+        } else if (grid === firstVisibleGrid) {
+          if (searchInput) {
+            event.preventDefault();
+            const valueLength = searchInput.value ? searchInput.value.length : 0;
+            shouldRestoreEmojiFocus = false;
+            searchInput.focus();
+            if (typeof searchInput.setSelectionRange === "function") {
+              searchInput.setSelectionRange(valueLength, valueLength);
+            }
+            return true;
+          }
         }
       }
     } else {
@@ -1644,6 +1658,24 @@ function initControls() {
     searchInput.addEventListener("input", (event) => {
       searchState.query = event.target.value || "";
       applyFiltersAndRender();
+    });
+    searchInput.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown" && !event.altKey && !event.ctrlKey && !event.metaKey) {
+        const valueLength = searchInput.value ? searchInput.value.length : 0;
+        const caretAtEnd =
+          typeof searchInput.selectionStart === "number" &&
+          typeof searchInput.selectionEnd === "number" &&
+          searchInput.selectionStart === searchInput.selectionEnd &&
+          searchInput.selectionStart === valueLength;
+        if (caretAtEnd) {
+          const buttons = getVisibleEmojiButtons();
+          if (buttons.length) {
+            event.preventDefault();
+            shouldRestoreEmojiFocus = false;
+            setActiveEmojiButton(buttons[0], { focus: true });
+          }
+        }
+      }
     });
   }
 
