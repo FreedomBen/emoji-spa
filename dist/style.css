@@ -58,6 +58,10 @@ body {
   color: var(--color-fg);
 }
 
+body.settings-open {
+  overflow: hidden;
+}
+
 #app {
   min-height: 100vh;
   display: flex;
@@ -314,6 +318,8 @@ section h2 {
   justify-content: center;
   padding: 1.5rem;
   background: var(--overlay-bg);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 50;
 }
 
@@ -324,7 +330,8 @@ section h2 {
 .settings-panel {
   max-width: 960px;
   width: 100%;
-  max-height: min(640px, 100%);
+  max-height: min(640px, calc(100vh - 3rem));
+  overflow-y: auto;
   background: var(--color-header-bg);
   border-radius: 0.75rem;
   border: 1px solid var(--color-border);

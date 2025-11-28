@@ -1530,6 +1530,7 @@ function openSettingsPanel() {
   if (!settingsOverlay) return;
   settingsOverlay.classList.remove("settings-hidden");
   settingsOverlay.setAttribute("aria-hidden", "false");
+  document.body.classList.add("settings-open");
   renderEmojiUsageTable();
   syncThemeControlsFromPreference();
 }
@@ -1538,6 +1539,7 @@ function closeSettingsPanel() {
   if (!settingsOverlay) return;
   settingsOverlay.classList.add("settings-hidden");
   settingsOverlay.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("settings-open");
 }
 
 function computeCategorySelectOptions(categories, previousValue) {
