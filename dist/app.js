@@ -48,6 +48,12 @@ let contextMenuCategory = null;
 let currentEmojiFocusButton = null;
 let lastFocusedEmojiKey = null;
 let shouldRestoreEmojiFocus = false;
+const KEYBOARD_TOOLTIP_DELAY_MS = 1000;
+const KEYBOARD_TOOLTIP_ID = "emojiKeyboardTooltip";
+let emojiKeyboardTooltipEl = null;
+let keyboardTooltipTimeoutId = null;
+let keyboardTooltipTarget = null;
+let lastInteractionWasKeyboard = false;
 
 function isEmojiGridVisible(grid) {
   if (!grid) return false;
@@ -70,6 +76,96 @@ function getVisibleEmojiButtons() {
     buttons.push(...grid.querySelectorAll(".emoji-button"));
   }
   return buttons;
+}
+
+function ensureEmojiTooltipElement() {
+  if (emojiKeyboardTooltipEl && emojiKeyboardTooltipEl.isConnected) {
+    return emojiKeyboardTooltipEl;
+  }
+  if (!document || !document.body) return null;
+  const tooltip = document.createElement("div");
+  tooltip.id = KEYBOARD_TOOLTIP_ID;
+  tooltip.className = "emoji-tooltip";
+  tooltip.setAttribute("role", "tooltip");
+  tooltip.setAttribute("aria-hidden", "true");
+  document.body.appendChild(tooltip);
+  emojiKeyboardTooltipEl = tooltip;
+  return tooltip;
+}
+
+function cancelKeyboardTooltipTimer() {
+  if (keyboardTooltipTimeoutId != null) {
+    window.clearTimeout(keyboardTooltipTimeoutId);
+    keyboardTooltipTimeoutId = null;
+  }
+}
+
+function hideKeyboardTooltip() {
+  cancelKeyboardTooltipTimer();
+  if (keyboardTooltipTarget && keyboardTooltipTarget instanceof HTMLElement) {
+    if (keyboardTooltipTarget.getAttribute("aria-describedby") === KEYBOARD_TOOLTIP_ID) {
+      keyboardTooltipTarget.removeAttribute("aria-describedby");
+    }
+  }
+  keyboardTooltipTarget = null;
+  const tooltip = emojiKeyboardTooltipEl;
+  if (!tooltip) return;
+  tooltip.classList.remove("emoji-tooltip-visible");
+  tooltip.setAttribute("aria-hidden", "true");
+}
+
+function positionKeyboardTooltip(button, tooltip) {
+  if (!button || !tooltip) return;
+  const rect = button.getBoundingClientRect();
+  const tooltipRect = tooltip.getBoundingClientRect();
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+  const padding = 8;
+  let top = rect.bottom + 8;
+  if (tooltipRect.height && top + tooltipRect.height > viewportHeight - padding) {
+    top = Math.max(padding, rect.top - tooltipRect.height - 8);
+  }
+  let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+  left = Math.max(padding, Math.min(left, viewportWidth - tooltipRect.width - padding));
+  tooltip.style.top = `${Math.round(top)}px`;
+  tooltip.style.left = `${Math.round(left)}px`;
+}
+
+function showKeyboardTooltip(button) {
+  if (!(button instanceof HTMLElement)) return;
+  const label = button.getAttribute("title") || "";
+  if (!label) {
+    hideKeyboardTooltip();
+    return;
+  }
+  const tooltip = ensureEmojiTooltipElement();
+  if (!tooltip) return;
+  tooltip.textContent = label;
+  tooltip.classList.remove("emoji-tooltip-visible");
+  tooltip.setAttribute("aria-hidden", "false");
+  tooltip.style.top = "0px";
+  tooltip.style.left = "0px";
+  keyboardTooltipTarget = button;
+  button.setAttribute("aria-describedby", KEYBOARD_TOOLTIP_ID);
+  positionKeyboardTooltip(button, tooltip);
+  window.requestAnimationFrame(() => {
+    if (keyboardTooltipTarget === button) {
+      tooltip.classList.add("emoji-tooltip-visible");
+    }
+  });
+}
+
+function scheduleKeyboardTooltip(button) {
+  cancelKeyboardTooltipTimer();
+  if (!(button instanceof HTMLElement)) return;
+  if (!lastInteractionWasKeyboard) {
+    hideKeyboardTooltip();
+    return;
+  }
+  keyboardTooltipTimeoutId = window.setTimeout(() => {
+    keyboardTooltipTimeoutId = null;
+    showKeyboardTooltip(button);
+  }, KEYBOARD_TOOLTIP_DELAY_MS);
 }
 
 function findAdjacentEmojiGrid(currentGrid, direction) {
@@ -958,6 +1054,15 @@ function attachEmojiEventHandlers(button, emoji, categoryName) {
 
   button.addEventListener("focus", () => {
     setActiveEmojiButton(button);
+    scheduleKeyboardTooltip(button);
+  });
+
+  button.addEventListener("blur", () => {
+    if (keyboardTooltipTarget === button) {
+      hideKeyboardTooltip();
+    } else {
+      cancelKeyboardTooltipTimer();
+    }
   });
 
   button.addEventListener("keydown", (event) => {
@@ -1507,6 +1612,7 @@ function populateCategorySelect(categories) {
 
 function applyFiltersAndRender() {
   const filtered = filterCategories();
+  hideKeyboardTooltip();
   categoriesEl.innerHTML = "";
   currentEmojiFocusButton = null;
 
@@ -1641,6 +1747,43 @@ function applyFiltersAndRender() {
 
 let controlsInitialized = false;
 
+function handlePointerInteractionIntent() {
+  lastInteractionWasKeyboard = false;
+  hideKeyboardTooltip();
+}
+
+document.addEventListener(
+  "pointerdown",
+  () => {
+    handlePointerInteractionIntent();
+  },
+  true
+);
+
+document.addEventListener(
+  "mousedown",
+  () => {
+    handlePointerInteractionIntent();
+  },
+  true
+);
+
+document.addEventListener(
+  "touchstart",
+  () => {
+    handlePointerInteractionIntent();
+  },
+  true
+);
+
+document.addEventListener(
+  "keydown",
+  () => {
+    lastInteractionWasKeyboard = true;
+  },
+  true
+);
+
 function focusSearchField(selectText = true) {
   if (!searchInput) return false;
   searchInput.focus();
@@ -1774,12 +1917,14 @@ function initControls() {
 
   window.addEventListener("resize", () => {
     hideEmojiContextMenu();
+    hideKeyboardTooltip();
   });
 
   window.addEventListener(
     "scroll",
     () => {
       hideEmojiContextMenu();
+      hideKeyboardTooltip();
     },
     true
   );
