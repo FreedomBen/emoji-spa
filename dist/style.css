@@ -342,6 +342,42 @@ section h2 {
   gap: 1rem;
 }
 
+.settings-shortcuts {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.settings-shortcuts-item {
+  margin: 0;
+}
+
+.settings-shortcuts-item dt {
+  font-weight: 600;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  align-items: center;
+}
+
+.settings-shortcuts-item dd {
+  margin: 0.2rem 0 0;
+  color: var(--color-muted);
+}
+
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-emoji-bg);
+  color: var(--color-fg);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+}
+
 .settings-panel-header {
   display: flex;
   align-items: center;
