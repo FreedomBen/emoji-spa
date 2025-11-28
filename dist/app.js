@@ -1363,6 +1363,15 @@ function applyFiltersAndRender() {
 
 let controlsInitialized = false;
 
+function focusSearchField(selectText = true) {
+  if (!searchInput) return false;
+  searchInput.focus();
+  if (selectText && typeof searchInput.select === "function") {
+    searchInput.select();
+  }
+  return true;
+}
+
 function initControls() {
   if (controlsInitialized) return;
   controlsInitialized = true;
@@ -1503,6 +1512,16 @@ function initControls() {
   }
 
   document.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
+      if (String(event.key).toLowerCase() === "s") {
+        const focused = focusSearchField();
+        if (focused) {
+          event.preventDefault();
+          return;
+        }
+      }
+    }
+
     if (event.key === "Escape") {
       if (settingsOverlay && !settingsOverlay.classList.contains("settings-hidden")) {
         event.preventDefault();
