@@ -1,6 +1,8 @@
 SHELL := /bin/bash
+CONTAINER_TOOL ?= $(shell if command -v podman >/dev/null 2>&1; then echo podman; else echo docker; fi)
+CONTAINER_IMAGE ?= emoji-spa:web
 
-.PHONY: all build run install-tauri dev update-emoji build-release test clean
+.PHONY: all build run install-tauri dev update-emoji build-release test clean web-image serve
 
 all: build
 
@@ -39,3 +41,9 @@ test:
 clean:
 	rm -rf build-artifacts target
 	cd src-tauri && cargo clean
+
+web-image:
+	$(CONTAINER_TOOL) build -f Containerfile -t $(CONTAINER_IMAGE) .
+
+serve: web-image
+	$(CONTAINER_TOOL) run --rm -p 8080:80 $(CONTAINER_IMAGE)
