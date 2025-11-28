@@ -45,6 +45,61 @@ let themePreference = THEME_SYSTEM;
 let systemDarkQuery = null;
 let contextMenuEmoji = null;
 let contextMenuCategory = null;
+let currentEmojiFocusButton = null;
+let lastFocusedEmojiKey = null;
+
+function isEmojiGridVisible(grid) {
+  if (!grid) return false;
+  const detailsParent = grid.closest("details");
+  if (detailsParent && !detailsParent.open) {
+    return false;
+  }
+  return true;
+}
+
+function getVisibleEmojiGrids() {
+  const grids = categoriesEl ? Array.from(categoriesEl.querySelectorAll(".emoji-grid")) : [];
+  return grids.filter((grid) => isEmojiGridVisible(grid));
+}
+
+function getVisibleEmojiButtons() {
+  const grids = getVisibleEmojiGrids();
+  const buttons = [];
+  for (const grid of grids) {
+    buttons.push(...grid.querySelectorAll(".emoji-button"));
+  }
+  return buttons;
+}
+
+function findAdjacentEmojiGrid(currentGrid, direction) {
+  if (!currentGrid || !Number.isInteger(direction) || direction === 0) return null;
+  const grids = getVisibleEmojiGrids();
+  if (!grids.length) return null;
+  const index = grids.indexOf(currentGrid);
+  if (index === -1) return null;
+  const nextIndex = index + direction;
+  if (nextIndex < 0 || nextIndex >= grids.length) return null;
+  return grids[nextIndex];
+}
+
+function getAlignedButtonFromGrid(grid, preferLastRow, columnIndex) {
+  if (!grid) return null;
+  const buttons = Array.from(grid.querySelectorAll(".emoji-button"));
+  if (!buttons.length) return null;
+  const columns = getEmojiGridColumnCount(buttons) || buttons.length;
+  const safeColumn = Math.max(0, Math.min(columnIndex, columns - 1));
+  if (preferLastRow) {
+    const totalRows = Math.ceil(buttons.length / columns);
+    const lastRowStart = (totalRows - 1) * columns;
+    const lastRowLength = buttons.length - lastRowStart;
+    const rowOffset = Math.min(safeColumn, Math.max(0, lastRowLength - 1));
+    return buttons[lastRowStart + rowOffset] || buttons[buttons.length - 1];
+  }
+  // Prefer first row (top) when moving downward into a new grid.
+  const firstRowLength = Math.min(columns, buttons.length);
+  const rowOffset = Math.min(safeColumn, firstRowLength - 1);
+  return buttons[rowOffset] || buttons[0];
+}
 
 const CATEGORY_KEYWORDS = {
   "Smileys & Emotion": ["smile", "smiley", "emoji", "happy", "sad", "angry", "cry", "laugh", "emotion", "face"],
@@ -698,7 +753,178 @@ async function copyEmoji(emoji) {
   }
 }
 
+function getEmojiButtonKey(button) {
+  if (!(button instanceof HTMLElement)) return "";
+  const section = button.dataset && button.dataset.section ? button.dataset.section : "";
+  const emoji = button.dataset && button.dataset.emoji ? button.dataset.emoji : button.textContent || "";
+  return `${section}::${emoji}`;
+}
+
+function setActiveEmojiButton(button, options = {}) {
+  if (!(button instanceof HTMLElement)) return;
+  if (!button.isConnected) return;
+  if (currentEmojiFocusButton && currentEmojiFocusButton !== button) {
+    currentEmojiFocusButton.setAttribute("tabindex", "-1");
+  }
+  currentEmojiFocusButton = button;
+  lastFocusedEmojiKey = getEmojiButtonKey(button);
+  button.setAttribute("tabindex", "0");
+  if (options.focus && typeof button.focus === "function") {
+    button.focus();
+  }
+}
+
+function initializeEmojiKeyboardFocus() {
+  const buttons = getVisibleEmojiButtons();
+  if (!buttons.length) {
+    currentEmojiFocusButton = null;
+    return;
+  }
+  let target = null;
+  if (lastFocusedEmojiKey) {
+    target = buttons.find((btn) => getEmojiButtonKey(btn) === lastFocusedEmojiKey) || null;
+  }
+  if (!target) {
+    target = buttons[0];
+  }
+  for (const button of buttons) {
+    if (button === target) {
+      button.setAttribute("tabindex", "0");
+      currentEmojiFocusButton = button;
+    } else {
+      button.setAttribute("tabindex", "-1");
+    }
+  }
+}
+
+function getEmojiGridColumnCount(buttons) {
+  if (!buttons.length) return 0;
+  const firstTop = buttons[0].offsetTop;
+  let columns = 0;
+  for (const button of buttons) {
+    if (button.offsetTop !== firstTop) {
+      break;
+    }
+    columns += 1;
+  }
+  return Math.max(columns, 1);
+}
+
+function handleEmojiKeyNavigation(event, button) {
+  if (!(button instanceof HTMLElement)) return false;
+  if (event.altKey || event.ctrlKey || event.metaKey) {
+    return false;
+  }
+  const key = event.key;
+  if (
+    key !== "ArrowLeft" &&
+    key !== "ArrowRight" &&
+    key !== "ArrowUp" &&
+    key !== "ArrowDown" &&
+    key !== "Home" &&
+    key !== "End"
+  ) {
+    return false;
+  }
+
+  const grid = button.closest(".emoji-grid");
+  if (!grid) return false;
+
+  const buttons = Array.from(grid.querySelectorAll(".emoji-button"));
+  const currentIndex = buttons.indexOf(button);
+  if (currentIndex === -1) return false;
+
+  const length = buttons.length;
+  let targetButton = null;
+
+  if (key === "ArrowLeft") {
+    if (currentIndex > 0) {
+      targetButton = buttons[currentIndex - 1];
+    } else {
+      const prevGrid = findAdjacentEmojiGrid(grid, -1);
+      if (prevGrid) {
+        const prevButtons = Array.from(prevGrid.querySelectorAll(".emoji-button"));
+        if (prevButtons.length) {
+          targetButton = prevButtons[prevButtons.length - 1];
+        }
+      }
+    }
+  } else if (key === "ArrowRight") {
+    if (currentIndex < length - 1) {
+      targetButton = buttons[currentIndex + 1];
+    } else {
+      const nextGrid = findAdjacentEmojiGrid(grid, 1);
+      if (nextGrid) {
+        const nextButtons = Array.from(nextGrid.querySelectorAll(".emoji-button"));
+        if (nextButtons.length) {
+          targetButton = nextButtons[0];
+        }
+      }
+    }
+  } else if (key === "ArrowUp" || key === "ArrowDown") {
+    const columns = getEmojiGridColumnCount(buttons);
+    if (columns <= 0) return false;
+    const columnIndex = currentIndex % columns;
+    if (key === "ArrowUp") {
+      const proposedIndex = currentIndex - columns;
+      if (proposedIndex >= 0) {
+        targetButton = buttons[proposedIndex];
+      } else {
+        const prevGrid = findAdjacentEmojiGrid(grid, -1);
+        if (prevGrid) {
+          targetButton = getAlignedButtonFromGrid(prevGrid, true, columnIndex);
+        }
+      }
+    } else {
+      const proposedIndex = currentIndex + columns;
+      if (proposedIndex < length) {
+        targetButton = buttons[proposedIndex];
+      } else {
+        const lastRowStart = Math.floor((length - 1) / columns) * columns;
+        const lastRowLength = length - lastRowStart;
+        if (currentIndex < lastRowStart) {
+          if (columnIndex < lastRowLength) {
+            targetButton = buttons[lastRowStart + columnIndex];
+          } else {
+            targetButton = buttons[length - 1];
+          }
+        }
+        if (!targetButton) {
+          const nextGrid = findAdjacentEmojiGrid(grid, 1);
+          if (nextGrid) {
+            targetButton = getAlignedButtonFromGrid(nextGrid, false, columnIndex);
+          }
+        }
+      }
+    }
+  } else if (key === "Home") {
+    targetButton = buttons[0];
+  } else if (key === "End") {
+    targetButton = buttons[length - 1];
+  }
+
+  if (!targetButton) return false;
+
+  event.preventDefault();
+  setActiveEmojiButton(targetButton, { focus: true });
+  return true;
+}
+
 function attachEmojiEventHandlers(button, emoji, categoryName) {
+  button.dataset.emoji = emoji || "";
+  button.dataset.section = categoryName || "";
+  button.setAttribute("tabindex", "-1");
+
+  button.addEventListener("focus", () => {
+    setActiveEmojiButton(button);
+  });
+
+  button.addEventListener("keydown", (event) => {
+    if (handleEmojiKeyNavigation(event, button)) {
+      return;
+    }
+  });
+
   const LONG_PRESS_MS = 500;
   let longPressTimeoutId = null;
   let longPressTriggered = false;
@@ -1237,6 +1463,7 @@ function populateCategorySelect(categories) {
 function applyFiltersAndRender() {
   const filtered = filterCategories();
   categoriesEl.innerHTML = "";
+  currentEmojiFocusButton = null;
 
   const hiddenMatches = getHiddenMatchesForCurrentFilters();
   lastHiddenMatches = hiddenMatches.length;
@@ -1269,6 +1496,7 @@ function applyFiltersAndRender() {
     if (hiddenMatches.length > 0) {
       renderHiddenSection(hiddenMatches);
     }
+    initializeEmojiKeyboardFocus();
     return;
   }
 
@@ -1283,6 +1511,7 @@ function applyFiltersAndRender() {
     if (hiddenMatches.length > 0) {
       renderHiddenSection(hiddenMatches);
     }
+    initializeEmojiKeyboardFocus();
     return;
   }
 
@@ -1297,6 +1526,7 @@ function applyFiltersAndRender() {
     if (hiddenMatches.length > 0) {
       renderHiddenSection(hiddenMatches);
     }
+    initializeEmojiKeyboardFocus();
     return;
   }
 
@@ -1317,6 +1547,7 @@ function applyFiltersAndRender() {
         renderCategories(new Map(), searchState.groupByCategory);
       }
     }
+    initializeEmojiKeyboardFocus();
     return;
   }
 
@@ -1359,6 +1590,8 @@ function applyFiltersAndRender() {
   } else if (hiddenMatches.length > 0) {
     renderHiddenSection(hiddenMatches);
   }
+
+  initializeEmojiKeyboardFocus();
 }
 
 let controlsInitialized = false;
