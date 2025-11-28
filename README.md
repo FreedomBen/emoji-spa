@@ -95,5 +95,6 @@ An AppImage will appear in `src-tauri/target/release/bundle/appimage/*.AppImage`
 ### Keyboard shortcuts & navigation
 
 - `Ctrl+S` (`Cmd+S` on macOS): Jump back to the search field and select the existing text so you can immediately type a new query.
-- Arrow keys inside the emoji grid: Once an emoji has focus (via click or Tab), use `← → ↑ ↓` to move between emojis. `Home` jumps to the first emoji in the current grid and `End` jumps to the last one.
+- Arrow keys inside the emoji grid: Once an emoji has focus (via click or Tab), use `← → ↑ ↓` to move between emojis (the focus will wrap into the neighboring sections automatically). `Home` jumps to the first emoji in the current grid and `End` jumps to the last one.
 - `Enter` (or `Space`) while an emoji is focused triggers the same copy action as clicking it, making the picker fully keyboard accessible.
+- Typing letters/numbers while an emoji remains focused appends that text to the search field and re-filters results without stealing focus; if the focused emoji no longer matches, focus moves to the first visible emoji.

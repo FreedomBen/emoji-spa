@@ -47,6 +47,7 @@ let contextMenuEmoji = null;
 let contextMenuCategory = null;
 let currentEmojiFocusButton = null;
 let lastFocusedEmojiKey = null;
+let shouldRestoreEmojiFocus = false;
 
 function isEmojiGridVisible(grid) {
   if (!grid) return false;
@@ -778,6 +779,7 @@ function initializeEmojiKeyboardFocus() {
   const buttons = getVisibleEmojiButtons();
   if (!buttons.length) {
     currentEmojiFocusButton = null;
+    shouldRestoreEmojiFocus = false;
     return;
   }
   let target = null;
@@ -795,6 +797,10 @@ function initializeEmojiKeyboardFocus() {
       button.setAttribute("tabindex", "-1");
     }
   }
+  if (target && shouldRestoreEmojiFocus && typeof target.focus === "function") {
+    target.focus();
+  }
+  shouldRestoreEmojiFocus = false;
 }
 
 function getEmojiGridColumnCount(buttons) {
@@ -910,6 +916,27 @@ function handleEmojiKeyNavigation(event, button) {
   return true;
 }
 
+function handleEmojiTypeToSearch(event) {
+  if (!searchInput) return false;
+  if (event.ctrlKey || event.metaKey || event.altKey) return false;
+  const key = event.key;
+  if (!key || key.length !== 1) return false;
+  if (key === " ") return false;
+  // Filter out non-printable characters.
+  if (key < " " && key !== "\u0008") return false;
+  shouldRestoreEmojiFocus = true;
+  const nextValue = `${searchInput.value || ""}${key}`;
+  searchInput.value = nextValue;
+  if (typeof searchInput.setSelectionRange === "function") {
+    const length = nextValue.length;
+    searchInput.setSelectionRange(length, length);
+  }
+  searchState.query = nextValue;
+  event.preventDefault();
+  applyFiltersAndRender();
+  return true;
+}
+
 function attachEmojiEventHandlers(button, emoji, categoryName) {
   button.dataset.emoji = emoji || "";
   button.dataset.section = categoryName || "";
@@ -921,6 +948,9 @@ function attachEmojiEventHandlers(button, emoji, categoryName) {
 
   button.addEventListener("keydown", (event) => {
     if (handleEmojiKeyNavigation(event, button)) {
+      return;
+    }
+    if (handleEmojiTypeToSearch(event)) {
       return;
     }
   });
@@ -938,6 +968,7 @@ function attachEmojiEventHandlers(button, emoji, categoryName) {
   }
 
   button.addEventListener("click", (event) => {
+    shouldRestoreEmojiFocus = event.detail === 0;
     if (longPressTriggered) {
       event.preventDefault();
       event.stopPropagation();
