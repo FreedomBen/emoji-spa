@@ -2,17 +2,17 @@ SHELL := /bin/bash
 CONTAINER_TOOL ?= $(shell if command -v podman >/dev/null 2>&1; then echo podman; else echo docker; fi)
 CONTAINER_IMAGE ?= emoji-spa:web
 
-.PHONY: all build run install-tauri dev update-emoji build-release test clean web-image serve
+.PHONY: all build run install-tauri dev update-emoji build-release test clean web-image serve frontend-build extension
 
 all: build
 
-build:
+build: frontend-build
 	@echo "Tip: to refresh emoji names from Unicode, periodically run 'make update-emoji'." >&2
 	cd src-tauri && \
 		cargo update && \
 		cargo build
 
-release:
+release: frontend-build
 	./build_in_container.sh
 
 run: build
@@ -24,6 +24,7 @@ install-tauri:
 	cargo install tauri-cli
 
 dev:
+	$(MAKE) frontend-build
 	cd src-tauri && \
 		cargo tauri dev
 
@@ -39,7 +40,7 @@ test:
 		PATH="$$SANITIZED_PATH" cargo test
 
 clean:
-	rm -rf build-artifacts target
+	rm -rf build-artifacts dist extension-dist target
 	cd src-tauri && cargo clean
 
 web-image:
@@ -47,3 +48,9 @@ web-image:
 
 serve: web-image
 	$(CONTAINER_TOOL) run --rm -p 8080:80 $(CONTAINER_IMAGE)
+
+frontend-build:
+	npm run build:web
+
+extension:
+	npm run build:extension

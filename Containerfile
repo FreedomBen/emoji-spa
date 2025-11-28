@@ -1,20 +1,25 @@
 # syntax=docker/dockerfile:1
 
-FROM debian:bookworm-slim AS builder
+FROM node:20-bullseye AS builder
 WORKDIR /app
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       bash \
       ca-certificates \
       curl \
-      make && \
+      make \
+      wget && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy only what is required to refresh the emoji metadata bundle.
-COPY Makefile .
-COPY scripts ./scripts
-COPY dist ./dist
+COPY package.json package-lock.json ./
+RUN npm ci
 
+COPY Makefile .
+COPY vite.config.ts .
+COPY frontend ./frontend
+COPY scripts ./scripts
+
+RUN npm run build:web
 
 FROM nginx:1.27-alpine
 COPY --from=builder /app/dist /usr/share/nginx/html

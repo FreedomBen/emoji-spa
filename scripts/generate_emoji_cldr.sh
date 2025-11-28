@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate dist/emoji-cldr.json from the latest Unicode emoji-test.txt file.
+# Generate frontend/public/emoji-cldr.json from the latest Unicode emoji-test.txt file.
 #
 # Usage:
 #   scripts/generate_emoji_cldr.sh [output-emoji-cldr.json]
 #
-# By default, output is written to: dist/emoji-cldr.json
+# By default, output is written to: frontend/public/emoji-cldr.json
 # If the download or parsing fails, this script exits non-zero and does NOT
 # modify any existing output file.
 
 EMOJI_TEST_URL="https://unicode.org/Public/emoji/latest/emoji-test.txt"
-OUTPUT_PATH="${1:-dist/emoji-cldr.json}"
-LOCAL_EMOJI_TEST_PATH="dist/emoji-test.txt"
+OUTPUT_PATH="${1:-frontend/public/emoji-cldr.json}"
+LOCAL_EMOJI_TEST_PATH="frontend/public/emoji-test.txt"
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT

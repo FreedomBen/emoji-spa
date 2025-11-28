@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import * as app from "../dist/app.js";
+import * as app from "../frontend/app.js";
 import { resetAppState } from "./test-utils.js";
 
 const {

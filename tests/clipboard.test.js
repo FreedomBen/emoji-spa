@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   emojiUsage,
   copyEmoji
-} from "../dist/app.js";
+} from "../frontend/app.js";
 import { resetAppState } from "./test-utils.js";
 
 describe("clipboard handling", () => {
@@ -99,4 +99,3 @@ describe("clipboard handling", () => {
     }
   });
 });
-

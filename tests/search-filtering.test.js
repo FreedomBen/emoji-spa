@@ -14,7 +14,7 @@ import {
   getRecentEmojis,
   initControls,
   setUsageSectionPreferencesForTest
-} from "../dist/app.js";
+} from "../frontend/app.js";
 import { resetAppState } from "./test-utils.js";
 
 const BASE_CATEGORIES = new Map([

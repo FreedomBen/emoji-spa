@@ -6,8 +6,10 @@ The app shows (single–codepoint) Unicode emoji grouped by rough category. Clic
 
 ## Project layout
 
+- `frontend/` — Source for the HTML/CSS/JS UI plus static assets (emoji metadata, logos, icons).
+- `dist/` — Generated web bundle emitted by Vite; loaded by Tauri and reused anywhere the static site is hosted.
+- `extension-dist/` — Generated browser extension bundles (Chrome + Firefox).
 - `src-tauri/` — Rust/Tauri backend and configuration.
-- `dist/` — Static frontend assets (`index.html`, `style.css`, `app.js`) loaded by Tauri.
 
 ## Prerequisites
 
@@ -65,25 +67,39 @@ Once the system linker is used and the GUI dependencies above are installed, the
 From the repository root:
 
 ```bash
-cd src-tauri
-cargo update
-cargo build
-cargo install tauri-cli
-cargo tauri dev
+npm install           # first time only
+make dev              # builds the web UI and launches cargo tauri dev
 ```
 
-This will build the Rust code, launch the Tauri window, and load the static UI from `dist/`.
+`make build` performs the same steps but runs `cargo build` instead of `cargo tauri dev`. Both commands ensure the Vite bundle in `dist/` is freshly rebuilt before Tauri runs.
 
 ### Release build
 
 To produce a release build:
 
 ```bash
+npm run build:web
 cd src-tauri
 cargo tauri build
 ```
 
-An AppImage will appear in `src-tauri/target/release/bundle/appimage/*.AppImage`
+An AppImage will appear in `src-tauri/target/release/bundle/appimage/*.AppImage`.
+
+### Browser extension builds
+
+The browser extension ships the exact same UI and runs entirely offline inside the extension sandbox. Build both Chrome and Firefox bundles with:
+
+```bash
+npm run build:extension
+```
+
+Artifacts land in `extension-dist/chrome` and `extension-dist/firefox`. Each folder can be loaded as an “unpacked” extension or zipped for the respective stores. Use `npm run build:extension:chrome` or `npm run build:extension:firefox` to build a single target.
+
+**Load in Chrome (or Chromium-based browsers)**
+- Open `chrome://extensions`, enable *Developer mode*, click *Load unpacked*, and select `extension-dist/chrome`.
+
+**Load in Firefox**
+- Open `about:debugging#/runtime/this-firefox`, choose *Load Temporary Add-on*, and pick `extension-dist/firefox/manifest.json` (or any file in that folder).
 
 ## Using the emoji picker
 

@@ -5,7 +5,7 @@ import {
   isEmoji,
   getCategory,
   generateEmojiByCategoryForTest
-} from "../dist/app.js";
+} from "../frontend/app.js";
 import { resetAppState } from "./test-utils.js";
 
 describe("emoji detection and categorization", () => {

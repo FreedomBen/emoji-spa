@@ -4,10 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest run"
+    "dev:web": "node ./node_modules/vite/bin/vite.js dev",
+    "build:web": "node ./node_modules/vite/bin/vite.js build",
+    "build:extension": "node scripts/build_extension.mjs",
+    "build:extension:chrome": "node scripts/build_extension.mjs chrome",
+    "build:extension:firefox": "node scripts/build_extension.mjs firefox",
+    "test": "node ./node_modules/vitest/vitest.mjs run"
   },
   "devDependencies": {
     "jsdom": "^24.0.0",
+    "vite": "^5.4.21",
     "vitest": "^1.5.0"
   }
 }

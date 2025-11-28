@@ -5,7 +5,7 @@ import {
   searchState,
   setAllCategoriesForTest,
   setUsageSectionPreferencesForTest
-} from "../dist/app.js";
+} from "../frontend/app.js";
 
 export function resetAppState() {
   setAllCategoriesForTest(null);

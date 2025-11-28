@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { metadataByEmoji, loadCldrEmojiNames } from "../dist/app.js";
+import { metadataByEmoji, loadCldrEmojiNames } from "../frontend/app.js";
 import { resetAppState } from "./test-utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
