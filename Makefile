@@ -2,7 +2,7 @@ SHELL := /bin/bash
 CONTAINER_TOOL ?= $(shell if command -v podman >/dev/null 2>&1; then echo podman; else echo docker; fi)
 CONTAINER_IMAGE ?= emoji-spa:web
 
-.PHONY: all build run install-tauri dev update-emoji build-release test clean web-image serve frontend-build extension
+.PHONY: all build run install-tauri dev update-emoji build-release test clean web-image serve frontend-build extension extension-pack
 
 all: build
 
@@ -54,3 +54,9 @@ frontend-build:
 
 extension:
 	npm run build:extension
+
+extension-pack: extension
+	@echo "Packaging Chrome extension..." >&2
+	cd extension-dist && rm -f chrome.zip && zip -qr chrome.zip chrome
+	@echo "Packaging Firefox extension..." >&2
+	cd extension-dist && rm -f firefox.zip && zip -qr firefox.zip firefox
