@@ -67,6 +67,42 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install zip utility
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Build web bundle
+        run: npm run build:web
+
+      - name: Package web artifact
+        run: |
+          rm -f web-dist.zip
+          cd dist && zip -qr ../web-dist.zip .
+
+      - name: Build & package extensions
+        run: make extension-pack
+
+      - name: Upload web bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-app-dist
+          path: web-dist.zip
+
+      - name: Upload extension artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-extensions
+          path: |
+            extension-dist/chrome.zip
+            extension-dist/firefox.zip
+
       - name: Build bundles via container script
         env:
           CONTAINER_RUNTIME: docker
@@ -90,7 +126,19 @@ jobs:
           name: emoji-spa-linux-bundles
           path: release-artifacts
 
-      - name: List downloaded bundles
+      - name: Download web artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-app-dist
+          path: release-artifacts/web
+
+      - name: Download extension artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: browser-extensions
+          path: release-artifacts/extensions
+
+      - name: List downloaded artifacts
         run: ls -R release-artifacts
 
       - name: Publish GitHub release
@@ -102,3 +150,6 @@ jobs:
             release-artifacts/bundle/appimage/*.AppImage
             release-artifacts/bundle/deb/*.deb
             release-artifacts/bundle/rpm/*.rpm
+            release-artifacts/web/web-dist.zip
+            release-artifacts/extensions/chrome.zip
+            release-artifacts/extensions/firefox.zip
