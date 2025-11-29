@@ -1,26 +1,43 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 1 ]]; then
-  echo "Usage: $(basename "$0") <new-version>" >&2
-  exit 1
-fi
-
-NEW_VERSION="$1"
-
-if [[ ! $NEW_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)*$ ]]; then
-  echo "Error: version must look like 1.2.3 or 1.2.3-beta.1" >&2
-  exit 1
-fi
+SCRIPT_DIR="$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "$REPO_ROOT"
 
 if ! command -v node >/dev/null 2>&1; then
   echo "Error: node is required to run this script." >&2
   exit 1
 fi
 
-SCRIPT_DIR="$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-cd "$REPO_ROOT"
+if [[ $# -eq 0 ]]; then
+  CURRENT_VERSION="$(
+    node <<'NODE'
+const fs = require("fs");
+const data = JSON.parse(fs.readFileSync("package.json", "utf8"));
+if (!data.version) {
+  throw new Error("Missing version field in package.json");
+}
+console.log(data.version);
+NODE
+  )"
+  echo "Current version: $CURRENT_VERSION"
+  exit 0
+fi
+
+if [[ $# -ne 1 ]]; then
+  echo "Usage: $(basename "$0") <new-version>" >&2
+  exit 1
+fi
+
+RAW_VERSION="$1"
+
+if [[ ! $RAW_VERSION =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)*$ ]]; then
+  echo "Error: version must look like 1.2.3 or v1.2.3-beta.1" >&2
+  exit 1
+fi
+
+NEW_VERSION="${RAW_VERSION#v}"
 
 update_json_version() {
   local file="$1"
