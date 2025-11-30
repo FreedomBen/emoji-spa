@@ -1,29 +1,36 @@
-# syntax=docker/dockerfile:1
+FROM rust:latest
 
-FROM node:20-bullseye AS builder
-WORKDIR /app
+# Install system dependencies required to build Tauri apps on Debian/Ubuntu.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      bash \
+      libgtk-3-dev \
+      libwebkit2gtk-4.1-dev \
+      libayatana-appindicator3-dev \
+      librsvg2-dev \
+      pkg-config \
+      build-essential \
       ca-certificates \
       curl \
-      make \
-      wget && \
+      patchelf && \
     rm -rf /var/lib/apt/lists/*
 
-COPY package.json package-lock.json ./
-RUN npm ci
+WORKDIR /app
 
-COPY Makefile .
-COPY vite.config.ts .
-COPY frontend ./frontend
-COPY scripts ./scripts
+# Copy the entire project into the image.
+COPY . .
 
-RUN npm run build:web
+# Install the Tauri CLI inside the container.
+RUN cargo install tauri-cli
 
-FROM nginx:1.27-alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-RUN chmod -R a+rX /usr/share/nginx/html
+WORKDIR /app/src-tauri
 
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Build release bundles for all supported Linux formats (deb, rpm, appimage).
+RUN cargo tauri build --bundles deb rpm appimage
+
+# Collect build artifacts in a single directory for export.
+RUN mkdir -p /artifacts && \
+    cp target/release/emoji-spa /artifacts/emoji-spa && \
+    cp -r target/release/bundle /artifacts/bundle
+
+# Default command is a shell; the container is mainly used as a build environment.
+CMD ["bash"]

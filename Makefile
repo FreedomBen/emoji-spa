@@ -44,7 +44,7 @@ clean:
 	cd src-tauri && cargo clean
 
 web-image:
-	$(CONTAINER_TOOL) build -f Containerfile -t $(CONTAINER_IMAGE) .
+	$(CONTAINER_TOOL) build -f Containerfile.web -t $(CONTAINER_IMAGE) .
 
 serve: web-image
 	$(CONTAINER_TOOL) run --rm -p 8080:80 $(CONTAINER_IMAGE)

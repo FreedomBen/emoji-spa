@@ -3,7 +3,7 @@ set -euo pipefail
 
 IMAGE_NAME="emoji-spa-builder"
 ARTIFACTS_DIR="${ARTIFACTS_DIR:-build-artifacts}"
-BUILD_FILE="${BUILD_FILE:-Dockerfile}"
+BUILD_FILE="${BUILD_FILE:-Containerfile}"
 SHORT_SHA="${SHORT_SHA:-$(git rev-parse --short HEAD 2>/dev/null || echo unknown)}"
 
 if [[ -z "${CONTAINER_RUNTIME:-}" ]]; then
