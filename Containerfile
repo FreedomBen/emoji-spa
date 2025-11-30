@@ -14,13 +14,20 @@ RUN apt-get update && \
       patchelf && \
     rm -rf /var/lib/apt/lists/*
 
+# Install the Tauri CLI before copying application code so the layer stays cached.
+RUN cargo install tauri-cli
+
 WORKDIR /app
 
-# Copy the entire project into the image.
-COPY . .
+# Copy only the Rust manifest files first to leverage Docker layer caching for dependencies.
+COPY src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json ./src-tauri/
+# Provide a minimal source file so Cargo accepts the manifest, then prefetch deps.
+RUN mkdir -p src-tauri/src && \
+    printf 'fn main() {}' > src-tauri/src/main.rs && \
+    cd src-tauri && cargo fetch
 
-# Install the Tauri CLI inside the container.
-RUN cargo install tauri-cli
+# Now copy the full project (invalidates cache only when sources change).
+COPY . .
 
 WORKDIR /app/src-tauri
 
