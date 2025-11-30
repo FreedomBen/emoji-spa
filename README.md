@@ -113,6 +113,8 @@ Artifacts land in `extension-dist/chrome` and `extension-dist/firefox`. Each fol
 | Shortcut | Description |
 | --- | --- |
 | `Ctrl+S` / `Cmd+S` | Focus the search field and select the current text so you can immediately type a new query. |
+| `Ctrl+W` / `Cmd+W` (Tauri) | Close the Emoji Spa desktop window and exit the app. |
+| `Ctrl+Q` / `Cmd+Q` (Tauri) | Close the Emoji Spa desktop window and exit the app. |
 | `← → ↑ ↓`, `Home`, `End` | Move between emojis inside the grid. `Home` jumps to the first emoji in the current grid, `End` jumps to the last, `↑` on the first row jumps back to search, and `↓` from the search field (caret at the end) dives into the first visible emoji. |
 | `Enter` / `Space` | Copy the focused emoji, just like clicking it. |
 | `Escape` | Close any open overlays/menus, clear the search field, and focus it for immediate typing. |

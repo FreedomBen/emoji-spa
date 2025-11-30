@@ -55,6 +55,31 @@ let keyboardTooltipTimeoutId = null;
 let keyboardTooltipTarget = null;
 let lastInteractionWasKeyboard = false;
 
+function isRunningInTauri() {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.__TAURI__ === "object" &&
+    window.__TAURI__ !== null &&
+    typeof window.__TAURI__.invoke === "function"
+  );
+}
+
+function requestTauriWindowClose() {
+  if (!isRunningInTauri()) return false;
+  try {
+    const result = window.__TAURI__.invoke("close_app_window");
+    if (result && typeof result.then === "function") {
+      result.catch((error) => {
+        console.error("Failed to close Tauri window:", error);
+      });
+    }
+    return true;
+  } catch (error) {
+    console.error("Failed to close Tauri window:", error);
+    return false;
+  }
+}
+
 function isEmojiGridVisible(grid) {
   if (!grid) return false;
   const detailsParent = grid.closest("details");
@@ -2036,12 +2061,17 @@ function initControls() {
 
   document.addEventListener("keydown", (event) => {
     if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
-      if (String(event.key).toLowerCase() === "s") {
+      const key = String(event.key).toLowerCase();
+      if (key === "s") {
         const focused = focusSearchField();
         if (focused) {
           event.preventDefault();
           return;
         }
+      } else if ((key === "w" || key === "q") && isRunningInTauri()) {
+        event.preventDefault();
+        requestTauriWindowClose();
+        return;
       }
     }
 
