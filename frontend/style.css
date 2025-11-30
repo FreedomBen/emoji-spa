@@ -164,6 +164,9 @@ header p {
 }
 
 .settings-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   border-radius: 0.375rem;
   border: 1px solid var(--color-border);
   background: var(--color-input-bg);
@@ -181,6 +184,12 @@ header p {
 .settings-button:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
+}
+
+.settings-button-icon {
+  display: block;
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 .emoji-hidden-section summary {

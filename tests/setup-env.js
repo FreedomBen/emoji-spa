@@ -64,7 +64,26 @@ if (typeof document !== "undefined") {
         <label>
           <input id="groupByCategory" type="checkbox" checked />
         </label>
-        <button id="settingsButton" type="button">Settings</button>
+        <button id="settingsButton" type="button">
+          <svg
+            class="settings-button-icon"
+            width="18"
+            height="18"
+            viewBox="0 0 18 18"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              d="M3 5.25H15M3 9H15M3 12.75H15"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          Settings
+        </button>
       </div>
       <main id="categories"></main>
       <div id="emojiContextMenu" class="emoji-context-menu emoji-context-menu-hidden"></div>
@@ -147,4 +166,3 @@ if (typeof document !== "undefined") {
     document.execCommand = () => true;
   }
 }
-
