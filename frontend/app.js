@@ -1096,6 +1096,32 @@ function appendCharacterToSearch(key) {
   return true;
 }
 
+function removeLastCharacterFromSearch() {
+  if (!searchInput) return false;
+  const previousValue = searchInput.value || "";
+  if (!previousValue.length) {
+    focusSearchField(false);
+    if (typeof searchInput.setSelectionRange === "function") {
+      searchInput.setSelectionRange(0, 0);
+    }
+    return true;
+  }
+  const nextValue = Array.from(previousValue);
+  nextValue.pop();
+  const joined = nextValue.join("");
+  searchInput.value = joined;
+  focusSearchField(false);
+  if (typeof searchInput.setSelectionRange === "function") {
+    const length = joined.length;
+    searchInput.setSelectionRange(length, length);
+  }
+  if (previousValue !== joined) {
+    searchState.query = joined;
+    applyFiltersAndRender();
+  }
+  return true;
+}
+
 function isLetterCharacterKey(key) {
   if (typeof key !== "string" || key.length !== 1) return false;
   const lower = key.toLowerCase();
@@ -1136,17 +1162,23 @@ function handleEmojiTypeToSearch(event) {
   return true;
 }
 
-function maybeFocusSearchFromLetter(event) {
+function maybeHandleGlobalSearchTyping(event) {
   if (!searchInput) return false;
   if (!event || typeof event.key !== "string") return false;
   if (event.ctrlKey || event.metaKey || event.altKey) return false;
-  if (!isLetterCharacterKey(event.key)) return false;
   const activeElement =
     document && document.activeElement ? document.activeElement : null;
   if (activeElement === categorySelect) return false;
   if (isEditableTextElement(activeElement)) return false;
-  shouldRestoreEmojiFocus = false;
-  if (!appendCharacterToSearch(event.key)) {
+  let handled = false;
+  if (isLetterCharacterKey(event.key)) {
+    shouldRestoreEmojiFocus = false;
+    handled = appendCharacterToSearch(event.key);
+  } else if (event.key === "Backspace") {
+    shouldRestoreEmojiFocus = false;
+    handled = removeLastCharacterFromSearch();
+  }
+  if (!handled) {
     return false;
   }
   event.preventDefault();
@@ -2118,7 +2150,7 @@ function initControls() {
   }
 
   document.addEventListener("keydown", (event) => {
-    if (!event.defaultPrevented && maybeFocusSearchFromLetter(event)) {
+    if (!event.defaultPrevented && maybeHandleGlobalSearchTyping(event)) {
       return;
     }
 
