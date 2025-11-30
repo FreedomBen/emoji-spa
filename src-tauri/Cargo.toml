@@ -1,6 +1,6 @@
 [package]
 name = "emoji-spa"
-version = "0.0.5"
+version = "0.0.6"
 description = "Emoji Spa Tauri App"
 edition = "2021"
 
