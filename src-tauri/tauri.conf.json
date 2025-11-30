@@ -26,6 +26,14 @@
     "icon": [
       "icons/icon.png",
       "icons/icon.ico"
-    ]
+    ],
+    "deb": {
+      "postInstallScript": "scripts/refresh-linux-desktop-cache.sh",
+      "postRemoveScript": "scripts/refresh-linux-desktop-cache.sh"
+    },
+    "rpm": {
+      "postInstallScript": "scripts/refresh-linux-desktop-cache.sh",
+      "postRemoveScript": "scripts/refresh-linux-desktop-cache.sh"
+    }
   }
 }
