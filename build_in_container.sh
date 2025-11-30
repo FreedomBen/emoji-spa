@@ -5,6 +5,7 @@ IMAGE_NAME="emoji-spa-builder"
 ARTIFACTS_DIR="${ARTIFACTS_DIR:-build-artifacts}"
 BUILD_FILE="${BUILD_FILE:-Containerfile}"
 SHORT_SHA="${SHORT_SHA:-$(git rev-parse --short HEAD 2>/dev/null || echo unknown)}"
+APPEND_SHORT_SHA="${APPEND_SHORT_SHA:-1}"
 
 if [[ -z "${CONTAINER_RUNTIME:-}" ]]; then
   if command -v podman >/dev/null 2>&1; then
@@ -47,7 +48,9 @@ normalize_names() {
       mv "${path}" "$(dirname "${path}")/${new_base}"
       path="$(dirname "${path}")/${new_base}"
     fi
-    append_short_sha "${path}"
+    if [[ "${APPEND_SHORT_SHA}" != "0" ]]; then
+      append_short_sha "${path}"
+    fi
   done
 }
 
