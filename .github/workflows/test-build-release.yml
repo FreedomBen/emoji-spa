@@ -264,6 +264,6 @@ jobs:
             release-artifacts/web/web-dist.zip
             release-artifacts/extensions/chrome.zip
             release-artifacts/extensions/firefox.zip
-            release-artifacts/windows/bundle/msi/*.msi
-            release-artifacts/windows/bundle/nsis/*.exe
-            release-artifacts/macos/bundle/dmg/*.dmg
+            release-artifacts/windows/**/msi/*.msi
+            release-artifacts/windows/**/nsis/*.exe
+            release-artifacts/macos/**/dmg/*.dmg
