@@ -2,7 +2,7 @@ SHELL := /bin/bash
 CONTAINER_TOOL ?= $(shell if command -v podman >/dev/null 2>&1; then echo podman; else echo docker; fi)
 CONTAINER_IMAGE ?= emoji-spa:web
 
-.PHONY: all build run install-tauri dev update-emoji build-release test clean web-image serve frontend-build extension extension-pack
+.PHONY: all build run install-tauri dev update-emoji build-release test clean web-image serve frontend-build extension extension-pack install-release-rpm
 
 all: build
 
@@ -60,3 +60,14 @@ extension-pack: extension
 	cd extension-dist && rm -f chrome.zip && zip -qr chrome.zip chrome
 	@echo "Packaging Firefox extension..." >&2
 	cd extension-dist && rm -f firefox.zip && zip -qr firefox.zip firefox
+
+install-release-rpm: release
+	@set -euo pipefail; \
+	RPM_DIR="build-artifacts/bundle/rpm"; \
+	latest_rpm="$$(ls -1t "$${RPM_DIR}"/*.rpm 2>/dev/null | head -n1)"; \
+	if [[ -z "$${latest_rpm}" ]]; then \
+		echo "No RPM found in $${RPM_DIR}. Run 'make release' first." >&2; \
+		exit 1; \
+	fi; \
+	echo "Installing $${latest_rpm}..."; \
+	sudo dnf install "$${latest_rpm}"
