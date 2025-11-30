@@ -86,7 +86,11 @@ if (typeof document !== "undefined") {
         </button>
       </div>
       <main id="categories"></main>
-      <div id="emojiContextMenu" class="emoji-context-menu emoji-context-menu-hidden"></div>
+      <div id="emojiContextMenu" class="emoji-context-menu emoji-context-menu-hidden">
+        <button type="button" data-action="toggle-pin">Pin</button>
+        <button type="button" data-action="toggle-hide">Hide</button>
+        <button type="button" data-action="reset-usage">Reset usage count</button>
+      </div>
       <div
         id="settingsOverlay"
         class="settings-overlay settings-hidden"

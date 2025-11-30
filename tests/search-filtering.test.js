@@ -347,4 +347,142 @@ describe("search and filtering", () => {
     expect(valuesBase).toContain("Animals & Nature");
     expect(selectedValue).toBe("Animals & Nature");
   });
+
+  it("shows the hidden matches hint when only hidden emojis satisfy the filters", () => {
+    const categoriesEl = document.getElementById("categories");
+    expect(categoriesEl).toBeTruthy();
+
+    hiddenEmojis.add("🐶");
+    searchState.query = "dog";
+    searchState.category = "Animals & Nature";
+
+    const categorySelect = document.getElementById("categorySelect");
+    categorySelect.value = "Animals & Nature";
+
+    applyFiltersAndRender();
+
+    const hint = categoriesEl.querySelector("p");
+    expect(hint).toBeTruthy();
+    expect(hint.textContent).toContain("Some hidden emoji do match");
+  });
+
+  it("applies search tokens within Recently Used mode", () => {
+    const categoriesEl = document.getElementById("categories");
+    expect(categoriesEl).toBeTruthy();
+
+    const now = Date.now();
+    emojiUsage.set("😀", { count: 1, lastUsed: now });
+    emojiUsage.set("🍕", { count: 1, lastUsed: now - 10 });
+    emojiUsage.set("🐱", { count: 1, lastUsed: now - 20 });
+
+    searchState.query = "pizza";
+
+    applyFiltersAndRender();
+
+    const categorySelect = document.getElementById("categorySelect");
+    categorySelect.value = "Recently Used";
+    categorySelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+    const headings = Array.from(
+      categoriesEl.querySelectorAll("section > h2")
+    ).map((h) => h.textContent);
+    expect(headings.length).toBe(1);
+    expect(headings[0]).toMatch(/^Recently Used \(\d+\)$/);
+
+    const buttons = Array.from(
+      categoriesEl.querySelectorAll("section button.emoji-button")
+    ).map((btn) => btn.textContent);
+    expect(buttons).toEqual(["🍕"]);
+  });
+
+  it("shows a hidden-match hint when pinned emojis are hidden", () => {
+    const categoriesEl = document.getElementById("categories");
+    expect(categoriesEl).toBeTruthy();
+
+    pinnedEmojis.add("😀");
+    hiddenEmojis.add("😀");
+
+    applyFiltersAndRender();
+
+    const categorySelect = document.getElementById("categorySelect");
+    categorySelect.value = "Pinned";
+    categorySelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+    const message = categoriesEl.querySelector("p");
+    expect(message).toBeTruthy();
+    expect(message.textContent).toContain("Some hidden emoji do match");
+  });
+
+  it("restores a non-all base category after leaving a special mode", () => {
+    const categoriesEl = document.getElementById("categories");
+    expect(categoriesEl).toBeTruthy();
+
+    const categorySelect = document.getElementById("categorySelect");
+    categorySelect.value = "Food & Drink";
+    categorySelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+    let headings = Array.from(
+      categoriesEl.querySelectorAll("section > h2")
+    ).map((h) => h.textContent);
+    expect(headings).toEqual(["Food & Drink (1)"]);
+
+    const now = Date.now();
+    emojiUsage.set("😀", { count: 5, lastUsed: now });
+    emojiUsage.set("🍕", { count: 3, lastUsed: now - 10 });
+
+    applyFiltersAndRender();
+
+    categorySelect.value = "Frequently Used";
+    categorySelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+    headings = Array.from(
+      categoriesEl.querySelectorAll("section > h2")
+    ).map((h) => h.textContent);
+    expect(headings.length).toBe(1);
+    expect(headings[0]).toMatch(/^Frequently Used/);
+
+    categorySelect.value = "Food & Drink";
+    categorySelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+    headings = Array.from(
+      categoriesEl.querySelectorAll("section > h2")
+    ).map((h) => h.textContent);
+    expect(headings[headings.length - 1]).toBe("Food & Drink (1)");
+  });
+
+  it("surfaces hidden matches inside a special mode when emoji overlap pinned/frequent/hidden", () => {
+    const categoriesEl = document.getElementById("categories");
+    expect(categoriesEl).toBeTruthy();
+
+    pinnedEmojis.add("🍕");
+    hiddenEmojis.add("🍕");
+    const now = Date.now();
+    emojiUsage.set("🍕", { count: 5, lastUsed: now });
+    emojiUsage.set("😀", { count: 4, lastUsed: now - 5 });
+
+    searchState.query = "pizza";
+
+    applyFiltersAndRender();
+
+    const categorySelect = document.getElementById("categorySelect");
+    categorySelect.value = "Frequently Used";
+    categorySelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+    const headings = categoriesEl.querySelectorAll("section > h2");
+    expect(headings.length).toBe(0);
+
+    const hiddenSection = categoriesEl.querySelector("section details");
+    expect(hiddenSection).toBeTruthy();
+    const summary = hiddenSection.querySelector("summary");
+    expect(summary.textContent).toBe("Hidden (1)");
+
+    const hiddenButtons = Array.from(
+      hiddenSection.querySelectorAll("button.emoji-button")
+    ).map((btn) => btn.textContent);
+    expect(hiddenButtons).toEqual(["🍕"]);
+
+    const hint = categoriesEl.querySelector("p");
+    expect(hint).toBeTruthy();
+    expect(hint.textContent).toContain("Some hidden emoji do match");
+  });
 });

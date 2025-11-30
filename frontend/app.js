@@ -423,6 +423,28 @@ function schedulePersistUsage() {
   }, 1000);
 }
 
+function resetUsageSaveTimerForTest() {
+  if (usageSaveTimeout != null) {
+    window.clearTimeout(usageSaveTimeout);
+    usageSaveTimeout = null;
+  }
+}
+
+function flushUsageSaveTimerForTest() {
+  if (usageSaveTimeout == null) {
+    return false;
+  }
+  const timeoutId = usageSaveTimeout;
+  usageSaveTimeout = null;
+  try {
+    window.clearTimeout(timeoutId);
+  } catch {
+    // ignore
+  }
+  persistUsage();
+  return true;
+}
+
 function loadThemePreference() {
   try {
     const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
@@ -2052,6 +2074,8 @@ export {
   loadUsageFromStorage,
   persistUsage,
   schedulePersistUsage,
+  resetUsageSaveTimerForTest,
+  flushUsageSaveTimerForTest,
   getPinnedEmojisForCandidates,
   getFrequentEmojis,
   getRecentEmojis,
@@ -2061,6 +2085,8 @@ export {
   getEmojiUsageRows,
   renderEmojiUsageTable,
   resetAllUsageCounts,
+  showEmojiContextMenu,
+  hideEmojiContextMenu,
   openSettingsPanel,
   closeSettingsPanel,
   computeCategorySelectOptions,
