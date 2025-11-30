@@ -1056,9 +1056,10 @@ function handleEmojiTypeToSearch(event) {
   if (key === " ") return false;
   // Filter out non-printable characters.
   if (key < " " && key !== "\u0008") return false;
-  shouldRestoreEmojiFocus = true;
+  shouldRestoreEmojiFocus = false;
   const nextValue = `${searchInput.value || ""}${key}`;
   searchInput.value = nextValue;
+  focusSearchField(false);
   if (typeof searchInput.setSelectionRange === "function") {
     const length = nextValue.length;
     searchInput.setSelectionRange(length, length);

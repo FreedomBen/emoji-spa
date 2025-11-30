@@ -116,4 +116,4 @@ Artifacts land in `extension-dist/chrome` and `extension-dist/firefox`. Each fol
 | `← → ↑ ↓`, `Home`, `End` | Move between emojis inside the grid. `Home` jumps to the first emoji in the current grid, `End` jumps to the last, `↑` on the first row jumps back to search, and `↓` from the search field (caret at the end) dives into the first visible emoji. |
 | `Enter` / `Space` | Copy the focused emoji, just like clicking it. |
 | `Escape` | Close any open overlays/menus, clear the search field, and focus it for immediate typing. |
-| Any letters/numbers | Adds characters to the search field even while an emoji keeps focus, then re-filters results (focus moves to the first matching emoji if needed). |
+| Any letters/numbers | Moves focus to the search field, appends the typed characters to the end, then re-filters results (focus moves to the first matching emoji if needed). |
