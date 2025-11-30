@@ -33,6 +33,15 @@ const THEME_DARK = "dark";
 const RECENT_LIMIT = 50;
 const FREQUENT_LIMIT = 50;
 const FREQUENT_MIN_COUNT = 2;
+const TEXT_ENTRY_INPUT_TYPES = new Set([
+  "text",
+  "search",
+  "url",
+  "email",
+  "password",
+  "tel",
+  "number",
+]);
 
 // emoji -> { count: number, lastUsed: number }
 const emojiUsage = new Map();
@@ -1073,6 +1082,44 @@ function handleEmojiKeyNavigation(event, button) {
   return true;
 }
 
+function appendCharacterToSearch(key) {
+  if (!searchInput || typeof key !== "string" || key.length === 0) return false;
+  const nextValue = `${searchInput.value || ""}${key}`;
+  searchInput.value = nextValue;
+  focusSearchField(false);
+  if (typeof searchInput.setSelectionRange === "function") {
+    const length = nextValue.length;
+    searchInput.setSelectionRange(length, length);
+  }
+  searchState.query = nextValue;
+  applyFiltersAndRender();
+  return true;
+}
+
+function isLetterCharacterKey(key) {
+  if (typeof key !== "string" || key.length !== 1) return false;
+  const lower = key.toLowerCase();
+  const upper = key.toUpperCase();
+  return lower !== upper;
+}
+
+function isEditableTextElement(element) {
+  if (!element) return false;
+  if (element === searchInput) return true;
+  if (element instanceof HTMLInputElement) {
+    const type = typeof element.type === "string" ? element.type.toLowerCase() : "";
+    if (!type || TEXT_ENTRY_INPUT_TYPES.has(type)) {
+      return true;
+    }
+  } else if (element instanceof HTMLTextAreaElement) {
+    return true;
+  }
+  if (typeof element.isContentEditable === "boolean" && element.isContentEditable) {
+    return true;
+  }
+  return false;
+}
+
 function handleEmojiTypeToSearch(event) {
   if (!searchInput) return false;
   if (event.ctrlKey || event.metaKey || event.altKey) return false;
@@ -1082,16 +1129,27 @@ function handleEmojiTypeToSearch(event) {
   // Filter out non-printable characters.
   if (key < " " && key !== "\u0008") return false;
   shouldRestoreEmojiFocus = false;
-  const nextValue = `${searchInput.value || ""}${key}`;
-  searchInput.value = nextValue;
-  focusSearchField(false);
-  if (typeof searchInput.setSelectionRange === "function") {
-    const length = nextValue.length;
-    searchInput.setSelectionRange(length, length);
+  if (!appendCharacterToSearch(key)) {
+    return false;
   }
-  searchState.query = nextValue;
   event.preventDefault();
-  applyFiltersAndRender();
+  return true;
+}
+
+function maybeFocusSearchFromLetter(event) {
+  if (!searchInput) return false;
+  if (!event || typeof event.key !== "string") return false;
+  if (event.ctrlKey || event.metaKey || event.altKey) return false;
+  if (!isLetterCharacterKey(event.key)) return false;
+  const activeElement =
+    document && document.activeElement ? document.activeElement : null;
+  if (activeElement === categorySelect) return false;
+  if (isEditableTextElement(activeElement)) return false;
+  shouldRestoreEmojiFocus = false;
+  if (!appendCharacterToSearch(event.key)) {
+    return false;
+  }
+  event.preventDefault();
   return true;
 }
 
@@ -2060,6 +2118,10 @@ function initControls() {
   }
 
   document.addEventListener("keydown", (event) => {
+    if (!event.defaultPrevented && maybeFocusSearchFromLetter(event)) {
+      return;
+    }
+
     if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
       const key = String(event.key).toLowerCase();
       if (key === "s") {
