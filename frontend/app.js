@@ -1770,6 +1770,7 @@ function applyFiltersAndRender() {
 }
 
 let controlsInitialized = false;
+let initialSearchFocusScheduled = false;
 
 function handlePointerInteractionIntent() {
   lastInteractionWasKeyboard = false;
@@ -1815,6 +1816,41 @@ function focusSearchField(selectText = true) {
     searchInput.select();
   }
   return true;
+}
+
+function scheduleInitialSearchFocus() {
+  if (initialSearchFocusScheduled) return;
+  if (!searchInput) return;
+  initialSearchFocusScheduled = true;
+
+  const focusIfSafe = () => {
+    if (!searchInput) return;
+    const active = document && document.activeElement ? document.activeElement : null;
+    const canTakeFocus =
+      !active ||
+      active === document.body ||
+      active === document.documentElement ||
+      active === searchInput;
+    if (!canTakeFocus) {
+      return;
+    }
+    focusSearchField(false);
+  };
+
+  const raf =
+    typeof window !== "undefined" && typeof window.requestAnimationFrame === "function"
+      ? window.requestAnimationFrame.bind(window)
+      : null;
+
+  if (raf) {
+    raf(focusIfSafe);
+  } else if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
+    window.setTimeout(focusIfSafe, 0);
+  } else if (typeof setTimeout === "function") {
+    setTimeout(focusIfSafe, 0);
+  } else {
+    focusIfSafe();
+  }
 }
 
 function clearSearchAndFocus() {
@@ -2025,6 +2061,7 @@ function initControls() {
   });
 
   syncUsageSectionControls();
+  scheduleInitialSearchFocus();
 }
 
 function init() {
