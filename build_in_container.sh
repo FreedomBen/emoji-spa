@@ -3,6 +3,7 @@ set -euo pipefail
 
 IMAGE_NAME="emoji-spa-builder"
 ARTIFACTS_DIR="${ARTIFACTS_DIR:-build-artifacts}"
+BUILD_FILE="${BUILD_FILE:-Dockerfile}"
 SHORT_SHA="${SHORT_SHA:-$(git rev-parse --short HEAD 2>/dev/null || echo unknown)}"
 
 if [[ -z "${CONTAINER_RUNTIME:-}" ]]; then
@@ -18,8 +19,8 @@ fi
 
 echo "Using container runtime '${CONTAINER_RUNTIME}'."
 
-echo "Building Container image '${IMAGE_NAME}'..."
-"${CONTAINER_RUNTIME}" build -t "${IMAGE_NAME}" .
+echo "Building Container image '${IMAGE_NAME}' from '${BUILD_FILE}'..."
+"${CONTAINER_RUNTIME}" build -f "${BUILD_FILE}" -t "${IMAGE_NAME}" .
 
 echo "Creating temporary container..."
 CONTAINER_ID="$("${CONTAINER_RUNTIME}" create "${IMAGE_NAME}")"
