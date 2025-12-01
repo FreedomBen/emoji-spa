@@ -4,6 +4,10 @@ This is a simple desktop application built with [Tauri](https://tauri.app/) and 
 
 The app shows (single–codepoint) Unicode emoji grouped by rough category. Clicking any emoji copies it to your clipboard so you can paste it into other applications.
 
+## Download
+
+Grab pre-built AppImage, RPM, DEB, and Windows/macOS bundles from the [GitHub Releases page](https://github.com/FreedomBen/emoji-spa/releases). Each release entry lists the latest version plus its platform-specific artifacts.
+
 ## Project layout
 
 - `frontend/` — Source for the HTML/CSS/JS UI plus static assets (emoji metadata, logos, icons).
