@@ -1,4 +1,7 @@
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 #[cfg(not(test))]
 use std::env;
 
@@ -47,6 +50,7 @@ fn write_default_icon_into(icons_dir: &Path) {
     icon_path.push("icon.png");
 
     if icon_path.exists() {
+        ensure_world_readable(&icon_path);
         return;
     }
 
@@ -54,11 +58,29 @@ fn write_default_icon_into(icons_dir: &Path) {
         Ok(bytes) => {
             if let Err(error) = fs::write(&icon_path, bytes) {
                 eprintln!("warning: failed to write default icon: {error}");
+            } else {
+                ensure_world_readable(&icon_path);
             }
         }
         Err(error) => {
             eprintln!("warning: failed to decode embedded icon: {error}");
         }
+    }
+}
+
+fn ensure_world_readable(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        if let Err(error) = fs::set_permissions(path, PermissionsExt::from_mode(0o644)) {
+            eprintln!("warning: failed to set permissions for {:?}: {error}", path);
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        let _ = path;
     }
 }
 
@@ -84,6 +106,8 @@ mod tests {
     use std::fs;
     use std::io::Read;
     use std::time::{SystemTime, UNIX_EPOCH};
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
 
     #[test]
     fn hex_to_bytes_parses_valid_hex() {
@@ -118,6 +142,39 @@ mod tests {
 
         // PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
         assert_eq!(&header, b"\x89PNG\r\n\x1a\n");
+
+        let _ = fs::remove_dir_all(&test_dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn ensure_default_icon_sets_world_readable_permissions() {
+        let base = std::env::temp_dir();
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+            .to_string();
+        let test_dir = base.join(format!("emoji_spa_icon_perm_test_{unique}"));
+        let icons_dir = test_dir.join("icons");
+        fs::create_dir_all(&icons_dir).expect("failed to create icons dir");
+
+        let icon_path = icons_dir.join("icon.png");
+        fs::write(&icon_path, [0u8]).expect("failed to seed icon");
+        let mut perms = fs::metadata(&icon_path)
+            .expect("metadata")
+            .permissions();
+        perms.set_mode(0o600);
+        fs::set_permissions(&icon_path, perms).expect("set perms");
+
+        ensure_default_icon_in_dir(&test_dir);
+
+        let mode = fs::metadata(&icon_path)
+            .expect("metadata after fix")
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(0o644, mode, "icon should be world-readable");
 
         let _ = fs::remove_dir_all(&test_dir);
     }
