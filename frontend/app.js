@@ -327,6 +327,7 @@ async function loadCldrEmojiNames() {
         if (!entry || !entry.emoji) continue;
         const emoji = entry.emoji;
         const existing = metadataByEmoji.get(emoji) || {};
+        // Prefer CLDR-provided name; fall back to any existing metadata name.
         const name = entry.name || existing.name;
         const mergedKeywords = [
           ...(existing.keywords || []),
@@ -341,6 +342,7 @@ async function loadCldrEmojiNames() {
       for (const [emoji, value] of Object.entries(data)) {
         if (!emoji || !value) continue;
         const existing = metadataByEmoji.get(emoji) || {};
+        // Prefer CLDR-provided name; fall back to any existing metadata name.
         const name = value.name || existing.name;
         const mergedKeywords = [
           ...(existing.keywords || []),
@@ -371,7 +373,7 @@ async function loadSlackEmojiNames() {
         if (!entry || !entry.emoji) continue;
         const emoji = entry.emoji;
         const existing = metadataByEmoji.get(emoji) || {};
-        const name = entry.name || existing.name;
+        const name = existing.name || normalizeSlackName(entry.name);
         const mergedKeywords = [
           ...(existing.keywords || []),
           ...(Array.isArray(entry.keywords) ? entry.keywords : [])
@@ -385,7 +387,7 @@ async function loadSlackEmojiNames() {
       for (const [emoji, value] of Object.entries(data)) {
         if (!emoji || !value) continue;
         const existing = metadataByEmoji.get(emoji) || {};
-        const name = value.name || existing.name;
+        const name = existing.name || normalizeSlackName(value.name);
         const mergedKeywords = [
           ...(existing.keywords || []),
           ...(Array.isArray(value.keywords) ? value.keywords : [])
@@ -399,6 +401,11 @@ async function loadSlackEmojiNames() {
   } catch (error) {
     console.error("Failed to load Slack emoji names:", error);
   }
+}
+
+function normalizeSlackName(name) {
+  if (typeof name !== "string") return name;
+  return name.replace(/_/g, " ").trim().toLowerCase();
 }
 
 function loadUsageFromStorage() {
