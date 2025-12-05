@@ -357,6 +357,50 @@ async function loadCldrEmojiNames() {
   }
 }
 
+async function loadSlackEmojiNames() {
+  try {
+    const response = await fetch("./emoji-slack.json");
+    if (!response.ok) {
+      return;
+    }
+
+    const data = await response.json();
+
+    if (Array.isArray(data)) {
+      for (const entry of data) {
+        if (!entry || !entry.emoji) continue;
+        const emoji = entry.emoji;
+        const existing = metadataByEmoji.get(emoji) || {};
+        const name = entry.name || existing.name;
+        const mergedKeywords = [
+          ...(existing.keywords || []),
+          ...(Array.isArray(entry.keywords) ? entry.keywords : [])
+        ]
+          .map((kw) => String(kw))
+          .filter((kw) => kw && kw.trim().length > 0);
+        const keywords = Array.from(new Set(mergedKeywords));
+        metadataByEmoji.set(emoji, { emoji, name, keywords });
+      }
+    } else if (data && typeof data === "object") {
+      for (const [emoji, value] of Object.entries(data)) {
+        if (!emoji || !value) continue;
+        const existing = metadataByEmoji.get(emoji) || {};
+        const name = value.name || existing.name;
+        const mergedKeywords = [
+          ...(existing.keywords || []),
+          ...(Array.isArray(value.keywords) ? value.keywords : [])
+        ]
+          .map((kw) => String(kw))
+          .filter((kw) => kw && kw.trim().length > 0);
+        const keywords = Array.from(new Set(mergedKeywords));
+        metadataByEmoji.set(emoji, { emoji, name, keywords });
+      }
+    }
+  } catch (error) {
+    console.error("Failed to load Slack emoji names:", error);
+  }
+}
+
 function loadUsageFromStorage() {
   try {
     const raw = window.localStorage.getItem(USAGE_STORAGE_KEY);
@@ -2200,6 +2244,7 @@ function init() {
   setTimeout(async () => {
     loadUsageFromStorage();
     await loadCldrEmojiNames();
+    await loadSlackEmojiNames();
     allCategories = generateEmojiByCategory();
     populateCategorySelect(allCategories);
     applyFiltersAndRender();
@@ -2233,6 +2278,7 @@ export {
   generateEmojiByCategory,
   generateEmojiByCategoryInternal as generateEmojiByCategoryForTest,
   loadCldrEmojiNames,
+  loadSlackEmojiNames,
   loadUsageFromStorage,
   persistUsage,
   schedulePersistUsage,

@@ -30,6 +30,7 @@ dev:
 
 update-emoji:
 	bash scripts/generate_emoji_cldr.sh
+	node scripts/generate_slack_emoji_keywords.mjs
 
 test:
 	@echo "Running JavaScript tests with Vitest..." >&2
