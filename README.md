@@ -21,6 +21,46 @@ Grab pre-built AppImage, RPM, DEB, and Windows/macOS bundles from the [GitHub Re
 - Tauri CLI (optional but convenient):  
   `cargo install tauri-cli`
 
+### Setting up rustup
+
+If you do not already have Rust, install it via `rustup` (cross‑platform toolchain manager):
+
+#### Install rustup on Fedora
+
+```bash
+sudo dnf install -y rustup
+```
+
+#### Cross-platform install
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+#### After installation
+
+```bash
+rustup-init
+```
+
+During the prompt, choose the default installation to get the stable toolchain and `cargo` on your `PATH`. After installation, restart your shell (or run `source ~/.cargo/env`), then verify with:
+
+```bash
+rustc --version
+cargo --version
+rustup update stable
+```
+
+You may wish to persist the PATH updates:
+
+```bash
+echo '[ -d "${HOME}/.cargo/bin" ] && export PATH="${HOME}/.cargo/bin:${PATH}"' >> ~/.bash_profile
+```
+
+#### Windows
+
+On Windows, use an elevated PowerShell or Command Prompt to run the same installer command (it downloads `rustup-init.exe` and guides you through the defaults). When done, reopen the terminal so the `%USERPROFILE%\.cargo\bin` directory is on `PATH`.
+
 ### Fedora dependencies
 
 On Fedora you need a working system C/C++ toolchain plus the libraries Tauri/WebKit depend on.
@@ -34,11 +74,13 @@ sudo dnf groupinstall "Development Tools"
 Then install the common Tauri GUI/WebKit dependencies:
 
 ```bash
+# If you installed rust through rustup earlier, skip this part:
 sudo dnf install -y \
   rust \
-  cargo \
+  cargo
+
+sudo dnf install -y \
   gtk3-devel \
-  webkit2gtk3-devel \
   cairo-devel \
   pango-devel \
   openssl-devel \
