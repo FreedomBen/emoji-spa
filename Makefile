@@ -2,7 +2,7 @@ SHELL := /bin/bash
 CONTAINER_TOOL ?= $(shell if command -v podman >/dev/null 2>&1; then echo podman; else echo docker; fi)
 CONTAINER_IMAGE ?= emoji-spa:web
 
-.PHONY: all build run install-tauri dev update-emoji build-release test clean web-image serve frontend-build extension extension-pack install-release-rpm
+.PHONY: all build run install-tauri dev update-emoji build-release test clean web-image serve frontend-build extension extension-pack install-release-rpm help
 
 all: build
 
@@ -72,3 +72,21 @@ install-release-rpm: release
 	fi; \
 	echo "Installing $${latest_rpm}..."; \
 	sudo dnf install "$${latest_rpm}"
+
+help:
+	@printf "Available targets:\n"
+	@printf "  %-22s %s\n" "all" "Default; runs 'build'."
+	@printf "  %-22s %s\n" "build" "Build frontend then Tauri backend (cargo build)."
+	@printf "  %-22s %s\n" "release" "Create release bundle inside container (build_in_container.sh)."
+	@printf "  %-22s %s\n" "run" "Build and start Tauri dev app (installs tauri-cli if needed)."
+	@printf "  %-22s %s\n" "install-tauri" "Install the Tauri CLI globally."
+	@printf "  %-22s %s\n" "dev" "Build frontend and run cargo tauri dev."
+	@printf "  %-22s %s\n" "update-emoji" "Regenerate emoji metadata JSON from CLDR + Slack keywords."
+	@printf "  %-22s %s\n" "test" "Run Vitest for JS then cargo test in src-tauri with sanitized PATH."
+	@printf "  %-22s %s\n" "clean" "Remove build artifacts, dist outputs, and target dirs."
+	@printf "  %-22s %s\n" "web-image" "Build static web container image using Containerfile.web."
+	@printf "  %-22s %s\n" "serve" "Run web image locally on port 8080."
+	@printf "  %-22s %s\n" "frontend-build" "Bundle the web frontend (npm run build:web)."
+	@printf "  %-22s %s\n" "extension" "Build browser extension bundle (npm run build:extension)."
+	@printf "  %-22s %s\n" "extension-pack" "Zip Chrome and Firefox extension bundles under extension-dist/."
+	@printf "  %-22s %s\n" "install-release-rpm" "Install the latest built RPM from build-artifacts/bundle/rpm."
