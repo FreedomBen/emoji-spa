@@ -1,6 +1,7 @@
 SHELL := /bin/bash
 CONTAINER_TOOL ?= $(shell if command -v podman >/dev/null 2>&1; then echo podman; else echo docker; fi)
 CONTAINER_IMAGE ?= emoji-spa:web
+CONTAINER_PUBLISH ?= -p [::]:8080:80
 
 .PHONY: all build run install-tauri dev update-emoji build-release test clean web-image serve frontend-build extension extension-pack install-release-rpm help
 
@@ -48,7 +49,7 @@ web-image:
 	$(CONTAINER_TOOL) build -f Containerfile.web -t $(CONTAINER_IMAGE) .
 
 serve: web-image
-	$(CONTAINER_TOOL) run --rm -p 8080:80 $(CONTAINER_IMAGE)
+	$(CONTAINER_TOOL) run --rm $(CONTAINER_PUBLISH) $(CONTAINER_IMAGE)
 
 frontend-build:
 	npm run build:web
@@ -85,7 +86,7 @@ help:
 	@printf "  %-22s %s\n" "test" "Run Vitest for JS then cargo test in src-tauri with sanitized PATH."
 	@printf "  %-22s %s\n" "clean" "Remove build artifacts, dist outputs, and target dirs."
 	@printf "  %-22s %s\n" "web-image" "Build static web container image using Containerfile.web."
-	@printf "  %-22s %s\n" "serve" "Run web image locally on port 8080."
+	@printf "  %-22s %s\n" "serve" "Run web image locally on port 8080 (IPv6 localhost by default)."
 	@printf "  %-22s %s\n" "frontend-build" "Bundle the web frontend (npm run build:web)."
 	@printf "  %-22s %s\n" "extension" "Build browser extension bundle (npm run build:extension)."
 	@printf "  %-22s %s\n" "extension-pack" "Zip Chrome and Firefox extension bundles under extension-dist/."
