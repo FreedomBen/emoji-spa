@@ -1,6 +1,10 @@
+import 'dart:io' show Platform, exit;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'package:emoji_spa/services/clipboard_service.dart';
 import 'package:emoji_spa/state/emoji_state.dart';
@@ -105,6 +109,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ---------------------------------------------------------------------------
+  // Window close (desktop only)
+  // ---------------------------------------------------------------------------
+
+  Future<void> _closeWindow() async {
+    if (!kIsWeb && Platform.isLinux) {
+      await windowManager.close();
+    } else if (!kIsWeb) {
+      exit(0);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Global keyboard shortcuts
   // ---------------------------------------------------------------------------
 
@@ -122,6 +138,15 @@ class _HomePageState extends State<HomePage> {
         baseOffset: 0,
         extentOffset: _searchController.text.length,
       );
+      return KeyEventResult.handled;
+    }
+
+    // Ctrl+W / Ctrl+Q → close window (desktop only)
+    if ((HardwareKeyboard.instance.isControlPressed ||
+            HardwareKeyboard.instance.isMetaPressed) &&
+        (key == LogicalKeyboardKey.keyW ||
+            key == LogicalKeyboardKey.keyQ)) {
+      _closeWindow();
       return KeyEventResult.handled;
     }
 

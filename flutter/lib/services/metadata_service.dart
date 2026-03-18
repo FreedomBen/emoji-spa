@@ -123,10 +123,23 @@ Map<String, EmojiEntry> buildBaseMetadata() {
 }
 
 /// Loads and parses a JSON asset file containing emoji metadata.
-/// Returns a map of emoji → {name, keywords}.
+/// The asset may be a JSON array of {emoji, name, keywords} objects or a
+/// JSON object keyed by emoji. Either way, returns a map of emoji → data.
 Future<Map<String, dynamic>> _loadJsonAsset(String assetPath) async {
   final jsonString = await rootBundle.loadString(assetPath);
-  return json.decode(jsonString) as Map<String, dynamic>;
+  final decoded = json.decode(jsonString);
+  if (decoded is Map<String, dynamic>) {
+    return decoded;
+  }
+  // Convert list format [{emoji, name, keywords}, ...] to map keyed by emoji.
+  final list = decoded as List<dynamic>;
+  final map = <String, dynamic>{};
+  for (final item in list) {
+    if (item is Map<String, dynamic> && item.containsKey('emoji')) {
+      map[item['emoji'] as String] = item;
+    }
+  }
+  return map;
 }
 
 /// Loads CLDR metadata from assets/emoji-cldr.json.
