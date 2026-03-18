@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class EmojiSearchBar extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+  final FocusNode? focusNode;
 
   const EmojiSearchBar({
     super.key,
     required this.controller,
     required this.onChanged,
+    this.focusNode,
   });
 
   @override
@@ -15,6 +17,7 @@ class EmojiSearchBar extends StatelessWidget {
     return Expanded(
       child: TextField(
         controller: controller,
+        focusNode: focusNode,
         onChanged: onChanged,
         decoration: const InputDecoration(
           hintText: 'Search by emoji or category\u2026',
