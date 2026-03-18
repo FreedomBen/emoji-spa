@@ -6,6 +6,7 @@ const {
   emojiUsage,
   metadataByEmoji,
   hiddenEmojis,
+  pinnedEmojis,
   searchState,
   setAllCategoriesForTest,
   getEmojiUsageRows,
@@ -13,6 +14,8 @@ const {
   getFrequentEmojis,
   getRecentEmojis,
   openSettingsPanel,
+  closeSettingsPanel,
+  applyFiltersAndRender,
   loadThemePreference,
   applyTheme,
   syncThemeControlsFromPreference,
@@ -242,5 +245,167 @@ describe("settings panel – theme preference UI", () => {
     const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
     expect(stored).toBe(THEME_SYSTEM);
   });
-}
-);
+});
+
+describe("settings panel – open/close behavior", () => {
+  beforeEach(() => {
+    resetAppState();
+    initControls();
+    // Ensure the panel starts closed (prior tests may have left it open).
+    closeSettingsPanel();
+  });
+
+  it("opening settings panel removes hidden class and sets aria-hidden to false", () => {
+    const overlay = document.getElementById("settingsOverlay");
+    expect(overlay.classList.contains("settings-hidden")).toBe(true);
+    expect(overlay.getAttribute("aria-hidden")).toBe("true");
+
+    openSettingsPanel();
+
+    expect(overlay.classList.contains("settings-hidden")).toBe(false);
+    expect(overlay.getAttribute("aria-hidden")).toBe("false");
+  });
+
+  it("close button restores hidden state", () => {
+    openSettingsPanel();
+
+    const overlay = document.getElementById("settingsOverlay");
+    const closeButton = document.getElementById("closeSettingsButton");
+    closeButton.click();
+
+    expect(overlay.classList.contains("settings-hidden")).toBe(true);
+    expect(overlay.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("clicking overlay backdrop closes the panel", () => {
+    openSettingsPanel();
+
+    const overlay = document.getElementById("settingsOverlay");
+
+    // Simulate clicking the overlay itself (not the inner panel).
+    const clickEvent = new MouseEvent("click", { bubbles: true });
+    Object.defineProperty(clickEvent, "target", { value: overlay });
+    overlay.dispatchEvent(clickEvent);
+
+    expect(overlay.classList.contains("settings-hidden")).toBe(true);
+    expect(overlay.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("clicking inside the panel does not close it", () => {
+    openSettingsPanel();
+
+    const overlay = document.getElementById("settingsOverlay");
+    const panel = overlay.querySelector(".settings-panel");
+
+    // Simulate clicking inside the panel — target is the panel, not the overlay.
+    const clickEvent = new MouseEvent("click", { bubbles: true });
+    Object.defineProperty(clickEvent, "target", { value: panel });
+    overlay.dispatchEvent(clickEvent);
+
+    expect(overlay.classList.contains("settings-hidden")).toBe(false);
+    expect(overlay.getAttribute("aria-hidden")).toBe("false");
+  });
+
+  it("Escape key closes the settings panel", () => {
+    openSettingsPanel();
+
+    const overlay = document.getElementById("settingsOverlay");
+
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+    );
+
+    expect(overlay.classList.contains("settings-hidden")).toBe(true);
+    expect(overlay.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("closing settings panel does not affect search or category state", () => {
+    setAllCategoriesForTest(
+      new Map([
+        ["Animals & Nature", ["🐶"]],
+        ["Food & Drink", ["🍕"]]
+      ])
+    );
+
+    searchState.query = "dog";
+    searchState.category = "Animals & Nature";
+    pinnedEmojis.add("🐶");
+    hiddenEmojis.add("🍕");
+    emojiUsage.set("🐶", { count: 3, lastUsed: 100 });
+
+    openSettingsPanel();
+    closeSettingsPanel();
+
+    expect(searchState.query).toBe("dog");
+    expect(searchState.category).toBe("Animals & Nature");
+    expect(pinnedEmojis.has("🐶")).toBe(true);
+    expect(hiddenEmojis.has("🍕")).toBe(true);
+    expect(emojiUsage.get("🐶").count).toBe(3);
+  });
+});
+
+describe("theme toggle does not reset UI state", () => {
+  beforeEach(() => {
+    resetAppState();
+    initControls();
+  });
+
+  it("toggling theme preserves category, search, pinned, hidden, and usage state", () => {
+    const categories = new Map([
+      ["Animals & Nature", ["🐶", "🐱"]],
+      ["Food & Drink", ["🍕"]]
+    ]);
+    setAllCategoriesForTest(categories);
+
+    // Set up diverse UI state.
+    pinnedEmojis.add("🐶");
+    hiddenEmojis.add("🍕");
+    emojiUsage.set("🐶", { count: 5, lastUsed: 200 });
+    emojiUsage.set("🐱", { count: 2, lastUsed: 100 });
+    searchState.groupByCategory = false;
+
+    // First render to populate the category select with real options.
+    applyFiltersAndRender();
+
+    // Now set the category via the select element so it sticks across re-renders.
+    const categorySelect = document.getElementById("categorySelect");
+    categorySelect.value = "Animals & Nature";
+    searchState.category = "Animals & Nature";
+
+    // Set a search query via the input element.
+    const searchInput = document.getElementById("searchInput");
+    searchInput.value = "cat";
+    searchState.query = "cat";
+
+    // Re-render with the active filters.
+    applyFiltersAndRender();
+
+    // Snapshot state before theme toggles.
+    const categoriesEl = document.getElementById("categories");
+    const htmlBefore = categoriesEl.innerHTML;
+
+    // Toggle to light theme.
+    applyTheme(THEME_LIGHT);
+
+    // All state should be unchanged.
+    expect(searchState.query).toBe("cat");
+    expect(searchState.category).toBe("Animals & Nature");
+    expect(searchState.groupByCategory).toBe(false);
+    expect(pinnedEmojis.has("🐶")).toBe(true);
+    expect(hiddenEmojis.has("🍕")).toBe(true);
+    expect(emojiUsage.get("🐶").count).toBe(5);
+    expect(emojiUsage.get("🐱").count).toBe(2);
+
+    // Toggle to dark theme.
+    applyTheme(THEME_DARK);
+
+    expect(searchState.query).toBe("cat");
+    expect(searchState.category).toBe("Animals & Nature");
+    expect(pinnedEmojis.has("🐶")).toBe(true);
+    expect(hiddenEmojis.has("🍕")).toBe(true);
+
+    // The DOM body should reflect the theme but the emoji grid should be identical.
+    expect(document.body.getAttribute("data-theme")).toBe("dark");
+    expect(categoriesEl.innerHTML).toBe(htmlBefore);
+  });
+});
