@@ -3,7 +3,8 @@ CONTAINER_TOOL ?= $(shell if command -v podman >/dev/null 2>&1; then echo podman
 CONTAINER_IMAGE ?= emoji-spa:web
 CONTAINER_PUBLISH ?= -p [::]:8080:80
 
-.PHONY: all build run install-tauri dev update-emoji build-release test clean web-image serve frontend-build extension extension-pack install-release-rpm help
+.PHONY: all build run install-tauri dev update-emoji build-release test clean web-image serve frontend-build extension extension-pack install-release-rpm help \
+	flutter-generate-emoji flutter-dev flutter-dev-web flutter-build-linux flutter-build-web flutter-test flutter-clean
 
 all: build
 
@@ -73,6 +74,31 @@ install-release-rpm: release
 	fi; \
 	echo "Installing $${latest_rpm}..."; \
 	sudo dnf install "$${latest_rpm}"
+
+# --- Flutter targets ---
+
+flutter-generate-emoji:
+	cd flutter && dart run tool/generate_emoji_categories.dart
+
+flutter-dev: flutter-generate-emoji
+	cd flutter && flutter run -d linux
+
+flutter-dev-web: flutter-generate-emoji
+	cd flutter && flutter run -d chrome
+
+flutter-build-linux: flutter-generate-emoji
+	cd flutter && flutter build linux --release
+
+flutter-build-web: flutter-generate-emoji
+	cd flutter && flutter build web --release
+
+flutter-test:
+	cd flutter && flutter test
+
+flutter-clean:
+	cd flutter && flutter clean
+
+# --- End Flutter targets ---
 
 help:
 	@printf "Available targets:\n"
