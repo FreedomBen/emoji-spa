@@ -178,4 +178,78 @@ mod tests {
 
         let _ = fs::remove_dir_all(&test_dir);
     }
+
+    #[test]
+    fn idempotent_rerun_preserves_icon() {
+        let base = std::env::temp_dir();
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+            .to_string();
+        let test_dir = base.join(format!("emoji_spa_icon_idempotent_{unique}"));
+
+        // First call: creates the icon.
+        ensure_default_icon_in_dir(&test_dir);
+        let icon_path = test_dir.join("icons").join("icon.png");
+        let content_first = fs::read(&icon_path).expect("read after first call");
+
+        // Second call: should succeed and leave the file unchanged.
+        ensure_default_icon_in_dir(&test_dir);
+        let content_second = fs::read(&icon_path).expect("read after second call");
+
+        assert_eq!(content_first, content_second, "icon content should be unchanged after second call");
+
+        let _ = fs::remove_dir_all(&test_dir);
+    }
+
+    #[test]
+    fn pre_existing_custom_icon_is_preserved() {
+        let base = std::env::temp_dir();
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+            .to_string();
+        let test_dir = base.join(format!("emoji_spa_icon_custom_{unique}"));
+        let icons_dir = test_dir.join("icons");
+        fs::create_dir_all(&icons_dir).expect("create icons dir");
+
+        let icon_path = icons_dir.join("icon.png");
+        let custom_content = b"custom icon data";
+        fs::write(&icon_path, custom_content).expect("write custom icon");
+
+        // Call should early-return because icon.png already exists.
+        ensure_default_icon_in_dir(&test_dir);
+
+        let read_back = fs::read(&icon_path).expect("read back icon");
+        assert_eq!(read_back, custom_content, "custom icon content should be preserved");
+
+        let _ = fs::remove_dir_all(&test_dir);
+    }
+
+    #[test]
+    fn creates_icons_subdir_when_base_dir_missing() {
+        let base = std::env::temp_dir();
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+            .to_string();
+        let test_dir = base.join(format!("emoji_spa_icon_nobase_{unique}"));
+
+        // Ensure the base dir does not exist.
+        let _ = fs::remove_dir_all(&test_dir);
+        assert!(!test_dir.exists(), "base dir should not exist before test");
+
+        ensure_default_icon_in_dir(&test_dir);
+
+        let icons_dir = test_dir.join("icons");
+        assert!(icons_dir.is_dir(), "icons/ subdir should be created");
+
+        let icon_path = icons_dir.join("icon.png");
+        assert!(icon_path.exists(), "icon.png should be created");
+
+        let _ = fs::remove_dir_all(&test_dir);
+    }
 }
