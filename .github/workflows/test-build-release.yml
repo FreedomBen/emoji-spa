@@ -218,8 +218,6 @@ jobs:
       - build
       - build-windows
       - build-macos
-      - flutter-build-web
-      - flutter-build-linux
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Download bundles
@@ -252,18 +250,6 @@ jobs:
           name: emoji-spa-macos-bundle
           path: release-artifacts/macos
 
-      - name: Download Flutter web artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: flutter-web-dist
-          path: release-artifacts/flutter-web
-
-      - name: Download Flutter Linux artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: flutter-linux-bundle
-          path: release-artifacts/flutter-linux
-
       - name: List downloaded artifacts
         run: ls -R release-artifacts
 
@@ -282,5 +268,3 @@ jobs:
             release-artifacts/windows/**/msi/*.msi
             release-artifacts/windows/**/nsis/*.exe
             release-artifacts/macos/**/dmg/*.dmg
-            release-artifacts/flutter-web/flutter-web-dist.zip
-            release-artifacts/flutter-linux/flutter-linux-bundle.tar.gz

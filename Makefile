@@ -3,8 +3,7 @@ CONTAINER_TOOL ?= $(shell if command -v podman >/dev/null 2>&1; then echo podman
 CONTAINER_IMAGE ?= emoji-spa:web
 CONTAINER_PUBLISH ?= -p [::]:8080:80
 
-.PHONY: all build run install-tauri dev update-emoji build-release test test-e2e clean web-image serve frontend-build extension extension-pack install-release-rpm help \
-	flutter-generate-emoji flutter-dev flutter-dev-web flutter-build-linux flutter-build-web flutter-test flutter-clean flutter-web-image flutter-serve
+.PHONY: all build run install-tauri dev update-emoji build-release test test-e2e clean web-image serve frontend-build extension extension-pack install-release-rpm help
 
 all: build
 
@@ -79,37 +78,6 @@ install-release-rpm: release
 	echo "Installing $${latest_rpm}..."; \
 	sudo dnf install "$${latest_rpm}"
 
-# --- Flutter targets ---
-
-flutter-generate-emoji:
-	cd flutter && dart run tool/generate_emoji_categories.dart
-
-flutter-dev: flutter-generate-emoji
-	cd flutter && flutter run -d linux
-
-flutter-dev-web: flutter-generate-emoji
-	cd flutter && flutter run -d chrome
-
-flutter-build-linux: flutter-generate-emoji
-	cd flutter && flutter build linux --release
-
-flutter-build-web: flutter-generate-emoji
-	cd flutter && flutter build web --release
-
-flutter-test:
-	cd flutter && flutter test
-
-flutter-clean:
-	cd flutter && flutter clean
-
-flutter-web-image: flutter-generate-emoji
-	$(CONTAINER_TOOL) build -f Containerfile.flutter-web -t emoji-spa:flutter-web .
-
-flutter-serve: flutter-web-image
-	$(CONTAINER_TOOL) run --rm $(CONTAINER_PUBLISH) emoji-spa:flutter-web
-
-# --- End Flutter targets ---
-
 help:
 	@printf "Available targets:\n"
 	@printf "  %-22s %s\n" "all" "Default; runs 'build'."
@@ -128,13 +96,3 @@ help:
 	@printf "  %-22s %s\n" "extension" "Build browser extension bundle (npm run build:extension)."
 	@printf "  %-22s %s\n" "extension-pack" "Zip Chrome and Firefox extension bundles under extension-dist/."
 	@printf "  %-22s %s\n" "install-release-rpm" "Install the latest built RPM from build-artifacts/bundle/rpm."
-	@printf "\nFlutter targets:\n"
-	@printf "  %-22s %s\n" "flutter-generate-emoji" "Generate emoji-categories.json from Unicode codepoints."
-	@printf "  %-22s %s\n" "flutter-dev" "Run Flutter Linux desktop in dev mode."
-	@printf "  %-22s %s\n" "flutter-dev-web" "Run Flutter web in Chrome dev mode."
-	@printf "  %-22s %s\n" "flutter-build-linux" "Build Flutter Linux release bundle."
-	@printf "  %-22s %s\n" "flutter-build-web" "Build Flutter web release bundle."
-	@printf "  %-22s %s\n" "flutter-test" "Run Flutter tests."
-	@printf "  %-22s %s\n" "flutter-clean" "Clean Flutter build artifacts."
-	@printf "  %-22s %s\n" "flutter-web-image" "Build Flutter web container image."
-	@printf "  %-22s %s\n" "flutter-serve" "Run Flutter web container on port 8080."
