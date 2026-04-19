@@ -122,20 +122,3 @@ spec:
       backendRefs:
         - name: emoji-spa-web
           port: 80
-
----
-apiVersion: domain-name-operator.tamx.org/v1
-kind: CloudflareDnsRecord
-metadata:
-  name: emoji-spa
-  labels:
-    app: emoji-spa
-    tier: web
-    env: prod
-    kind: cloudflarednsrecord
-  namespace: emoji-spa-prod
-spec:
-  hostName: emoji.spa
-  zoneId: 966b989896294a029264967616c56c96
-  serviceName: emoji-spa-web
-  proxied: true
