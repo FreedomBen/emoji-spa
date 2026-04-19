@@ -33,7 +33,7 @@ spec:
       containers:
         - name: web
           image: ghcr.io/your-org/emoji-spa-web:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 80

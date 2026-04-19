@@ -1,32 +1,11 @@
 SHELL := /bin/bash
 CONTAINER_TOOL ?= $(shell if command -v podman >/dev/null 2>&1; then echo podman; else echo docker; fi)
 CONTAINER_IMAGE ?= emoji-spa:web
-CONTAINER_PUBLISH ?= -p [::]:8080:80
+CONTAINER_PUBLISH ?= -p 8080:80
 
 .PHONY: all build run install-tauri dev update-emoji build-release test test-e2e clean web-image serve frontend-build extension extension-pack install-release-rpm help
 
 all: build
-
-help:
-	@echo "Usage: make [target]"
-	@echo ""
-	@echo "Targets:"
-	@echo "  all                 Build the project (default)"
-	@echo "  build               Build frontend and Rust backend"
-	@echo "  release             Build release artifacts in container"
-	@echo "  run                 Build and launch Tauri dev mode"
-	@echo "  dev                 Build frontend and launch Tauri dev mode"
-	@echo "  install-tauri       Install the Tauri CLI"
-	@echo "  update-emoji        Regenerate emoji data from Unicode CLDR and Slack"
-	@echo "  test                Run JavaScript and Rust tests"
-	@echo "  clean               Remove all build artifacts"
-	@echo "  web-image           Build the web container image"
-	@echo "  serve               Build and serve via container on port 8080"
-	@echo "  frontend-build      Build the web frontend"
-	@echo "  extension           Build the browser extension"
-	@echo "  extension-pack      Package Chrome and Firefox extensions as zips"
-	@echo "  install-release-rpm Build release RPM and install it with dnf"
-	@echo "  help                Show this help message"
 
 build: frontend-build
 	@echo "Tip: to refresh emoji names from Unicode, periodically run 'make update-emoji'." >&2
