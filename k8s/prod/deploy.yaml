@@ -70,6 +70,7 @@ metadata:
     tier: web
     env: prod
 spec:
+  type: ClusterIP
   selector:
     app: emoji-spa
     tier: web
