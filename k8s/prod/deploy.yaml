@@ -30,6 +30,8 @@ spec:
         tier: web
         env: prod
     spec:
+      imagePullSecrets:
+        - name: registry-creds
       containers:
         - name: web
           image: docker.io/freedomben/emoji-spa-web:${RELEASE_VERSION}
