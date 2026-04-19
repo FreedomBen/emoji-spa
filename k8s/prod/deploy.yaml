@@ -32,8 +32,8 @@ spec:
     spec:
       containers:
         - name: web
-          image: ghcr.io/your-org/emoji-spa-web:latest
-          imagePullPolicy: Always
+          image: docker.io/freedomben/emoji-spa-web:${RELEASE_VERSION}
+          imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 80

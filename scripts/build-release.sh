@@ -9,7 +9,7 @@ fi
 
 docker build \
   --file Containerfile.web \
-  --tag "docker.io/freedomben/tamx-static:${RELEASE_VERSION}" \
-  --tag "docker.io/freedomben/tamx-static:latest" \
+  --tag "docker.io/freedomben/emoji-spa-web:${RELEASE_VERSION}" \
+  --tag "docker.io/freedomben/emoji-spa-web:latest" \
   .
 
