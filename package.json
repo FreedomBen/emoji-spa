@@ -10,7 +10,8 @@
     "build:extension:chrome": "node scripts/build_extension.mjs chrome",
     "build:extension:firefox": "node scripts/build_extension.mjs firefox",
     "test": "node ./node_modules/vitest/vitest.mjs run",
-    "test:e2e": "npx playwright test"
+    "test:e2e": "npx playwright test",
+    "test:e2e:container": "npx playwright test --config=playwright.config.container.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",

@@ -3,7 +3,7 @@ CONTAINER_TOOL ?= $(shell if command -v podman >/dev/null 2>&1; then echo podman
 CONTAINER_IMAGE ?= emoji-spa:web
 CONTAINER_PUBLISH ?= -p 8080:80
 
-.PHONY: all build run install-tauri dev update-emoji build-release test test-e2e clean web-image serve frontend-build extension extension-pack install-release-rpm help
+.PHONY: all build run install-tauri dev update-emoji build-release test test-e2e test-e2e-container clean web-image serve frontend-build extension extension-pack install-release-rpm help
 
 all: build
 
@@ -44,6 +44,10 @@ test:
 test-e2e:
 	@echo "Running Playwright E2E tests..." >&2
 	npm run test:e2e
+
+test-e2e-container:
+	@echo "Running Playwright E2E tests against the web container image..." >&2
+	npm run test:e2e:container
 
 clean:
 	rm -rf build-artifacts dist extension-dist target
@@ -89,6 +93,7 @@ help:
 	@printf "  %-22s %s\n" "update-emoji" "Regenerate emoji metadata JSON from CLDR + Slack keywords."
 	@printf "  %-22s %s\n" "test" "Run Vitest for JS then cargo test in src-tauri with sanitized PATH."
 	@printf "  %-22s %s\n" "test-e2e" "Run Playwright E2E tests against the dev server."
+	@printf "  %-22s %s\n" "test-e2e-container" "Run Playwright E2E tests against the built web container image."
 	@printf "  %-22s %s\n" "clean" "Remove build artifacts, dist outputs, and target dirs."
 	@printf "  %-22s %s\n" "web-image" "Build static web container image using Containerfile.web."
 	@printf "  %-22s %s\n" "serve" "Run web image locally on port 8080 (IPv6 localhost by default)."
