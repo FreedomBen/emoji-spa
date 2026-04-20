@@ -37,6 +37,7 @@ export const EMOJI_METADATA = [
   { emoji: "🤔", name: "thinking face", keywords: ["think", "hmm", "question"] },
   { emoji: "🤨", name: "face with raised eyebrow", keywords: ["skeptical", "suspicious"] },
   { emoji: "🤯", name: "exploding head", keywords: ["mind blown", "mindblown", "shock", "wow"] },
+  { emoji: "🤮", name: "face vomiting", keywords: ["barf", "puke", "sick", "vomit"] },
 
   // Hearts / symbols
   { emoji: "❤️", name: "red heart", keywords: ["heart", "love", "like", "favorite"] },
