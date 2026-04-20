@@ -5,12 +5,10 @@
 .idea
 
 node_modules
-dist
 extension-dist
 build-artifacts
 target
 src-tauri/target
-src-tauri
 
 tests
 e2e
